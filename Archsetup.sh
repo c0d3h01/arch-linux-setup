@@ -16,7 +16,6 @@ yay # Update
 # /etc/pacman.conf ,parrelel downloading, colour enable.
 #
 sudo pacman -S --noconfirm \
-  git \
   neovim \
   neofetch \
   htop \
