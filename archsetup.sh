@@ -30,7 +30,7 @@ yay -S --noconfirm \
   brave-bin \
   telegram-desktop \
   github-desktop \
-  visual-stduio-code-bin \
+  visual-studio-code-bin \
   ferdium-bin \
   zoom \
   cmake \
