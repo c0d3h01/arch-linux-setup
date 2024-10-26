@@ -15,17 +15,7 @@ yay # Update
 #
 # /etc/pacman.conf ,parrelel downloading, colour enable.
 #
-sudo pacman -S --noconfirm \
-  neovim \
-  neofetch \
-  htop \
-  fastfetch \
-  docker \
-  nodejs \
-  npm \
-  discord \
-  libreoffice
-  #
+
 yay -S --noconfirm \
   brave-bin \
   telegram-desktop \
@@ -37,6 +27,18 @@ yay -S --noconfirm \
   android-ndk \
   openjdk-src
 #
+
+sudo pacman -S --noconfirm \
+  neovim \
+  neofetch \
+  htop \
+  fastfetch \
+  docker \
+  nodejs \
+  npm \
+  discord \
+  libreoffice
+
 sudo systemctl enable fstrim.timer
 
 git config --global user.name "c0d3h01"
