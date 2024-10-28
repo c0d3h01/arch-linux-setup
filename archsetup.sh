@@ -25,10 +25,6 @@ sudo sed -i '/\[options\]/a Color' /etc/pacman.conf
 # Remove conflicts and install AUR packages
 yay -S --needed --noconfirm \
     brave-bin \
-    telegram-desktop \
-    github-desktop \
-    visual-studio-code-bin \
-    ferdium-bin \
     zoom \
     cmake \
     android-ndk \
@@ -53,6 +49,19 @@ yay -S --needed --noconfirm \
     prelockd \
     uresourced
 
+# First remove orphaned packages if needed
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm
+
+# Install all packages at once with --nodeps flag to avoid debug dependencies
+yay -S --needed --noconfirm --nodeps \
+    telegram-desktop \
+    github-desktop \
+    visual-studio-code-bin \
+    ferdium-bin
+
+# Clean up orphaned packages after all installations
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm 
+    
 # Install official packages
 sudo pacman -S --needed --noconfirm \
     neovim \
