@@ -47,7 +47,8 @@ yay -S --needed --noconfirm \
     nohang \
     preload \
     prelockd \
-    uresourced
+    uresourced \
+    pamac-all-git
 
 # First remove orphaned packages if needed
 sudo pacman -Rns $(pacman -Qtdq) --noconfirm
@@ -72,7 +73,8 @@ sudo pacman -S --needed --noconfirm \
     nodejs \
     npm \
     discord \
-    libreoffice 
+    libreoffice \
+    spectacle
 
 # Enable services
 sudo systemctl enable fstrim.timer
@@ -93,6 +95,9 @@ sed -i 's|zram_checking_enabled = False|zram_checking_enabled = True|g' /etc/noh
 # Disable indexing
 sudo balooctl6 disable
 
+#Enablr bluetooth
+sudo systemctl start bluetooth.service
+sudo systemctl enable bluetooth.service
 # Git configuration
 git config --global user.name "c0d3h01"
 git config --global user.email "harshalsawant2004h@gmail.com"
