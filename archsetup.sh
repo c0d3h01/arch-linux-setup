@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cachyos-rate-mirrors #
+
 # System update and base packages
 sudo pacman -Syu --noconfirm
 sudo pacman -S --needed --noconfirm base-devel git
