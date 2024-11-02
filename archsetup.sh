@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cachyos-rate-mirrors #
+sudo cachyos-rate-mirrors #
 
 # System update and base packages
 sudo pacman -Syu --noconfirm
