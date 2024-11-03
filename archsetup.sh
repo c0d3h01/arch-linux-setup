@@ -32,7 +32,7 @@ yay -S --needed --noconfirm \
     android-sdk \
     openjdk-src \
     go \
-    postman \
+    #postman \
     youtube-music-bin
     
     #pipewire-pulse \
@@ -70,7 +70,7 @@ sudo pacman -Rns $(pacman -Qtdq) --noconfirm
     
 # Install official packages
 sudo pacman -S --needed --noconfirm \
-    neovim \
+    #neovim \
     htop \
     #fish \
     nerdfetch \
@@ -78,7 +78,7 @@ sudo pacman -S --needed --noconfirm \
     nodejs \
     npm \
     #spectacle
-    udisks2 \ 
+    #udisks2 \ 
     gvfs \
     gvfs-mtp \
     kdeconnect
