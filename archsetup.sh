@@ -103,8 +103,8 @@ sudo systemctl enable docker.service
 #sudo balooctl6 disable
 
 #Enable bluetooth
-#sudo systemctl start bluetooth.service
-#sudo systemctl enable bluetooth.service
+sudo systemctl start bluetooth.service
+sudo systemctl enable bluetooth.service
 
 # Git configuration
 git config --global user.name "c0d3h01"
