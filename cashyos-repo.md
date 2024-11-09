@@ -1,17 +1,18 @@
 ## Caschyos kernel can use on any arch based distro.
 
----
-```sudo nano /etc/pacman.conf```
+1. Get archive with script
 
 ```
-[cachyos]
-Server = https://repo.cachyos.org/repo/x86_64
+wget https://mirror.cachyos.org/cachyos-repo.tar.xz
+```
+> If you don't have `wget`, install it with `sudo pacman -S wget`
+
+2. Extract and enter into the archive
+```
+tar xvf cachyos-repo.tar.xz && cd cachyos-repo
 ```
 
----
-
-```sudo pacman -Syy```
-
-```sudo pacman -S linux-cachyos```
-
-```sudo grub-mkconfig -o /boot/grub/grub.cfg```
+3. Run script with sudo
+```
+sudo ./cachyos-repo.sh
+```
