@@ -191,7 +191,7 @@ sudo systemctl enable ufw.service
 sudo systemctl start ufw.service
 sudo ufw enable
 
-sed -i 's|zram_checking_enabled = False|zram_checking_enabled = True|g' /etc/nohang/nohang.conf
+sudo sed -i 's|zram_checking_enabled = False|zram_checking_enabled = True|g' /etc/nohang/nohang.conf
 
 ########################
 # Git configuration    #
@@ -213,6 +213,13 @@ yay -Scc --noconfirm
 sudo pacman -Scc --noconfirm
 paru -Syyu --noconfirm
 
+###########################
 sudo pacman -S gnome
+sudo systemctl enable gdm
+###########################
 
-exit 0 #Terminate.
+###########################
+# Start Gnome envirnment 
+###########################
+sudo systemctl start gdm
+
