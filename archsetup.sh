@@ -54,6 +54,9 @@ yay -S --needed --noconfirm \
     openjdk-src \
     postman-bin \
     youtube-music-bin \
+    notion-app-electron \
+    zed \
+    gparted \
     pipewire-pulse \
     pipewire-jack \
     lib32-pipewire-jack \
@@ -209,5 +212,7 @@ sudo ufw reload
 yay -Scc --noconfirm
 sudo pacman -Scc --noconfirm
 paru -Syyu --noconfirm
+
+sudo pacman -S gnome
 
 exit 0 #Terminate.
