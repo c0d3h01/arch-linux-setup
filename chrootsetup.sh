@@ -4,6 +4,7 @@
 curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
+chmod 777 ./cachyos-repo.sh
 sudo ./cachyos-repo.sh --remove
 
 # Yay installation
