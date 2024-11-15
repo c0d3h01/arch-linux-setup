@@ -73,7 +73,7 @@ pacstrap /mnt base base-devel linux linux-headers linux-firmware btrfs-progs \
     amd-ucode \
     networkmanager \
     grub efibootmgr \
-    neovim vim htop glances git \
+    neovim htop glances git \
     gcc gdb cmake make \
     python python-pip \
     nodejs npm \
@@ -88,22 +88,9 @@ pacstrap /mnt base base-devel linux linux-headers linux-firmware btrfs-progs \
     libva-mesa-driver \
     mesa-vdpau \
     mesa \
+    bluez bluez-utils \
     #lib32-mesa \
     #lib32-vulkan-radeon \
     gamemode \
     corectrl
-
-# Allow kdeconect
-#    sudo ufw enable
-#    sudo ufw allow 1714:1764/udp
-#    sudo ufw allow 1714:1764/tcp
-#    sudo ufw default deny incoming
-#    sudo ufw default allow outgoing
-#    sudo ufw allow ssh
-#    sudo ufw allow http
-#    sudo ufw allow https
-#    sudo ufw logging on
-#    sudo ufw reload
-
-echo "Installation completed!"
-echo "Please remove installation media and reboot."
+    
