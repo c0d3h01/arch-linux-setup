@@ -29,15 +29,30 @@ btrfs subvolume create /mnt/@log
 # Unmount and remount with proper options
 umount /mnt
 
-# Mount subvolumes with optimized options for AMD Ryzen
+# Create the base directory
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/sda2 /mnt
-mkdir -p /mnt/{home,var,tmp,.snapshots,var/log,boot/efi}
+
+# Create all necessary directories before mounting
+mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots}
+mkdir -p /mnt/var/log  # Create the log directory explicitly
+
+# Now mount all subvolumes
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/sda2 /mnt/home
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/sda2 /mnt/var
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/sda2 /mnt/tmp
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/sda2 /mnt/.snapshots
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/sda2 /mnt/var/log
 mount /dev/sda1 /mnt/boot/efi
+
+# Mount subvolumes with optimized options for AMD Ryzen
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/sda2 /mnt
+#mkdir -p /mnt/{home,var,tmp,.snapshots,var/log,boot/efi}
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/sda2 /mnt/home
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/sda2 /mnt/var
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/sda2 /mnt/tmp
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/sda2 /mnt/.snapshots
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/sda2 /mnt/var/log
+#mount /dev/sda1 /mnt/boot/efi
 
 # Install base system and AMD-specific packages
 pacstrap /mnt base base-devel linux-cachyos linux-cachyos-headers linux-firmware \
@@ -324,17 +339,19 @@ sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 # Enable UFW service
 sudo systemctl enable ufw
 
-# Allow kdeconect
-    sudo ufw allow 1714:1764/udp
-    sudo ufw allow 1714:1764/tcp
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow http
-    sudo ufw allow https
-    sudo ufw logging on
-    sudo ufw reload
 EOF # END arch-chroot eof here.
+
+# Allow kdeconect
+#    sudo ufw enable
+#    sudo ufw allow 1714:1764/udp
+#    sudo ufw allow 1714:1764/tcp
+#    sudo ufw default deny incoming
+#    sudo ufw default allow outgoing
+#    sudo ufw allow ssh
+#    sudo ufw allow http
+#    sudo ufw allow https
+#    sudo ufw logging on
+#    sudo ufw reload
 
 echo "Installation completed!"
 echo "Please remove installation media and reboot."
