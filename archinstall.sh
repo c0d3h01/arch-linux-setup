@@ -20,6 +20,14 @@ mkfs.btrfs -f /dev/nvme0n1p2
 # Mount and create BTRFS subvolumes
 mount -o ssd,noatime /dev/nvme0n1p2 /mnt
 
+# Create subvolumes
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@var
+btrfs subvolume create /mnt/@tmp
+btrfs subvolume create /mnt/@snapshots
+btrfs subvolume create /mnt/var/@log
+
 # Unmount to prepare for subvolume mounting
 umount /mnt
 
@@ -30,14 +38,6 @@ mkdir -p /mnt/var
 mkdir -p /mnt/tmp
 mkdir -p /mnt/.snapshots
 mkdir -p /mnt/var/log
-
-# Create subvolumes
-btrfs subvolume create /mnt/@
-btrfs subvolume create /mnt/@home
-btrfs subvolume create /mnt/@var
-btrfs subvolume create /mnt/@tmp
-btrfs subvolume create /mnt/@snapshots
-btrfs subvolume create /mnt/@log
 
 # Mount all subvolumes in correct order
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
