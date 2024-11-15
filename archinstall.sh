@@ -1,42 +1,26 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-# Define drive (change this according to your drive)
 DRIVE="/dev/nvme0n1"
 
-# Clear any existing partition table
+# Clear and create partitions
 sgdisk -Z ${DRIVE}
-
-# Create fresh GPT
 sgdisk -o ${DRIVE}
-
-# Create optimized partition layout
-# 1. EFI partition (512MB)
-# 2. Root partition (remaining space)
 sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" \
        -n 2:0:0 -t 2:8300 -c 2:"ROOT" ${DRIVE}
 
-# Ensure kernel updates partition table
-partprobe ${DRIVE}
 sleep 2
+partprobe ${DRIVE}
 
-# Format EFI partition
+# Format partitions
 mkfs.fat -F32 -n "EFI" ${DRIVE}p1
+mkfs.btrfs -f -L "ROOT" ${DRIVE}p2
 
-# Format BTRFS with optimal settings
-mkfs.btrfs -f \
-    -L "ROOT" \
-    -n 32k \
-    -m single \
-    -d single \
-    ${DRIVE}p2
+# Initial mount for subvolume creation
+mount ${DRIVE}p2 /mnt
 
-# Mount root for subvolume creation
-mount -o compress=zstd:1,noatime ${DRIVE}p2 /mnt
-
-# Create optimized subvolume layout
+# Create subvolumes
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@root
@@ -45,30 +29,31 @@ btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@tmp
 
-# Set specific BTRFS properties
-chattr +C /mnt/@cache  # Disable COW for pacman cache
-chattr +C /mnt/@log    # Disable COW for logs
-chattr +C /mnt/@tmp    # Disable COW for temporary files
-
 # Unmount to prepare for final mount
 umount /mnt
 
-# Create all required mount points
+# Create ALL mount points before mounting
 mkdir -p /mnt
-mkdir -p /mnt/{boot,home,root,srv,var/cache,var/log,tmp}
+mkdir -p /mnt/home
+mkdir -p /mnt/root
+mkdir -p /mnt/srv
+mkdir -p /mnt/var/cache
+mkdir -p /mnt/var/log
+mkdir -p /mnt/tmp
 mkdir -p /mnt/boot/efi
 
-# Mount subvolumes with optimized options
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@ ${DRIVE}p2 /mnt
+# Now mount subvolumes in correct order
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@ ${DRIVE}p2 /mnt
 
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@home ${DRIVE}p2 /mnt/home
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@root ${DRIVE}p2 /mnt/root
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@srv ${DRIVE}p2 /mnt/srv
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@cache ${DRIVE}p2 /mnt/var/cache
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@log ${DRIVE}p2 /mnt/var/log
-mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@tmp ${DRIVE}p2 /mnt/tmp
+# Mount other subvolumes only after root is mounted
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@home ${DRIVE}p2 /mnt/home
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@root ${DRIVE}p2 /mnt/root
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@srv ${DRIVE}p2 /mnt/srv
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@cache ${DRIVE}p2 /mnt/var/cache
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@log ${DRIVE}p2 /mnt/var/log
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@tmp ${DRIVE}p2 /mnt/tmp
 
-# Mount EFI partition
+# Mount EFI partition last
 mount ${DRIVE}p1 /mnt/boot/efi
 
 # Verify mounts
