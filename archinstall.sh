@@ -45,7 +45,6 @@ pacstrap /mnt base base-devel linux-cachyos linux-cachyos-headers linux-firmware
     networkmanager \
     grub efibootmgr \
     neovim vim htop glances git \
-    gnome gnome-terminal \
     gcc gdb cmake make \
     python python-pip \
     nodejs npm \
@@ -300,6 +299,7 @@ yay -S --needed --noconfirm \
 # First remove orphaned packages if needed   #
 sudo pacman -Rns $(pacman -Qtdq) --noconfirm
 
+# Cachyos optimized repo best combination with arch ;)
 curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
@@ -317,6 +317,9 @@ yay -S --needed --noconfirm --nodeps \
     ferdium-bin \
     vesktop-bin \
     onlyoffice-bin
+
+# Envirnment installation (GNOME).
+sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 
 # Enable UFW service
 sudo systemctl enable ufw
