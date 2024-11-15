@@ -24,6 +24,7 @@ btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@root
 btrfs subvolume create /mnt/@srv
+btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@tmp
