@@ -32,14 +32,7 @@ btrfs subvolume create /mnt/@tmp
 umount /mnt
 
 # Create ALL mount points before mounting
-mkdir -p /mnt
-mkdir -p /mnt/home
-mkdir -p /mnt/root
-mkdir -p /mnt/var
-mkdir -p /mnt/var/cache
-mkdir -p /mnt/var/log
-mkdir -p /mnt/tmp
-mkdir -p /mnt/boot/efi
+mkdir -p /mnt/{home,var/log,var/cache,root,srv,tmp,boot}
 
 # Now mount subvolumes in correct order
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@ ${DRIVE}p2 /mnt
