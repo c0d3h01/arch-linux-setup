@@ -32,11 +32,14 @@ umount /mnt
 # Create the base directory
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/nvme0n1p2 /mnt
 
-# Create all necessary directories before mounting
+# Create all directories first, including var/log
 mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots}
-mkdir -p /mnt/var/log  # Create the log directory explicitly
+mkdir -p /mnt/var/log
 
-# Now mount all subvolumes
+# Reordered mounts - mount root (@) first
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/nvme0n1p2 /mnt
+
+# Then mount all other subvolumes after creating directories
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/nvme0n1p2 /mnt/var
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
