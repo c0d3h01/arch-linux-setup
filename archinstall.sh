@@ -8,17 +8,17 @@ timedatectl set-ntp true
 
 # Create partitions for 1.3TB drive
 echo "Creating partitions..."
-parted -s /dev/sda mklabel gpt
-parted -s /dev/sda mkpart primary fat32 1MiB 2049MiB     # 2GB EFI partition
-parted -s /dev/sda set 1 esp on
-parted -s /dev/sda mkpart primary btrfs 2049MiB 100%     # Rest for BTRFS root
+parted -s /dev/nvme0n1 mklabel gpt
+parted -s /dev/nvme0n1 mkpart primary fat32 1MiB 2049MiB     # 2GB EFI partition
+parted -s /dev/nvme0n1 set 1 esp on
+parted -s /dev/nvme0n1 mkpart primary btrfs 2049MiB 100%     # Rest for BTRFS root
 
 # Format partitions
-mkfs.fat -F32 /dev/sda1
-mkfs.btrfs -f /dev/sda2
+mkfs.fat -F32 /dev/nvme0n1p1
+mkfs.btrfs -f /dev/nvme0n1p2
 
 # Mount and create BTRFS subvolumes with optimizations for SSD
-mount -o ssd,noatime /dev/sda2 /mnt
+mount -o ssd,noatime /dev/nvme0n1p2 /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
@@ -30,29 +30,19 @@ btrfs subvolume create /mnt/@log
 umount /mnt
 
 # Create the base directory
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/sda2 /mnt
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/nvme0n1p2 /mnt
 
 # Create all necessary directories before mounting
 mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots}
 mkdir -p /mnt/var/log  # Create the log directory explicitly
 
 # Now mount all subvolumes
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/sda2 /mnt/home
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/sda2 /mnt/var
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/sda2 /mnt/tmp
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/sda2 /mnt/.snapshots
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/sda2 /mnt/var/log
-mount /dev/sda1 /mnt/boot/efi
-
-# Mount subvolumes with optimized options for AMD Ryzen
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/sda2 /mnt
-#mkdir -p /mnt/{home,var,tmp,.snapshots,var/log,boot/efi}
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/sda2 /mnt/home
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/sda2 /mnt/var
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/sda2 /mnt/tmp
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/sda2 /mnt/.snapshots
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/sda2 /mnt/var/log
-#mount /dev/sda1 /mnt/boot/efi
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/nvme0n1p2 /mnt/var
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
+mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+mount /dev/nvme0n1p1 /mnt/boot/efi
 
 # Install base system and AMD-specific packages
 pacstrap /mnt base base-devel linux-cachyos linux-cachyos-headers linux-firmware \
@@ -110,107 +100,30 @@ ZRAM
 # AMD-specific kernel parameters and optimizations
 cat > /etc/sysctl.d/99-system-tune.conf <<SYSCTL
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
-# A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
-# and a value of 100 means IO cost is assumed to be equal.
 vm.swappiness = 180
-
-# The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
-# Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
 vm.vfs_cache_pressure=50
-
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which a process which is generating disk writes will itself start
-# writing out dirty data.
 vm.dirty_bytes = 268435456
-
-# page-cluster controls the number of pages up to which consecutive pages are read in from swap in a single attempt.
-# This is the swap counterpart to page cache readahead. The mentioned consecutivity is not in terms of virtual/physical addresses,
-# but consecutive on swap space - that means they were swapped out together. (Default is 3)
-# increase this value to 1 or 2 if you are using physical swap (1 if ssd, 2 if hdd)
 vm.page-cluster = 0
-
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which the background kernel flusher threads will start writing out
-# dirty data.
 vm.dirty_background_bytes = 134217728
-
-# This tunable is used to define when dirty data is old enough to be eligible for writeout by the
-# kernel flusher threads.  It is expressed in 100'ths of a second.  Data which has been dirty
-# in-memory for longer than this interval will be written out next time a flusher thread wakes up
-# (Default is 3000).
-#vm.dirty_expire_centisecs = 3000
-
-# The kernel flusher threads will periodically wake up and write old data out to disk.  This
-# tunable expresses the interval between those wakeups, in 100'ths of a second (Default is 500).
 vm.dirty_writeback_centisecs = 1500
-
-# This action will speed up your boot and shutdown, because one less module is loaded. Additionally disabling watchdog timers increases performance and lowers power consumption
-# Disable NMI watchdog
 kernel.nmi_watchdog = 0
-
-# Enable the sysctl setting kernel.unprivileged_userns_clone to allow normal users to run unprivileged containers.
 kernel.unprivileged_userns_clone = 1
-
-# To hide any kernel messages from the console
 kernel.printk = 3 3 3 3
-
-# Restricting access to kernel pointers in the proc filesystem
 kernel.kptr_restrict = 2
-
-# Disable Kexec, which allows replacing the current running kernel.
 kernel.kexec_load_disabled = 1
-
-# Increase the maximum connections
-# The upper limit on how many connections the kernel will accept (default 4096 since kernel version 5.6):
 net.core.somaxconn = 8192
-
-# Enable TCP Fast Open
-# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
-# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
-# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
 net.ipv4.tcp_fastopen = 3
-
-# Enable BBR3
-# The BBR3 congestion control algorithm can help achieve higher bandwidths and lower latencies for internet traffic
 net.ipv4.tcp_congestion_control = bbr
-
-# TCP SYN cookie protection
-# Helps protect against SYN flood attacks. Only kicks in when net.ipv4.tcp_max_syn_backlog is reached:
 net.ipv4.tcp_syncookies = 1
-
-# TCP Enable ECN Negotiation by default
 net.ipv4.tcp_ecn = 1
-
-# TCP Reduce performance spikes
-# Refer https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/reduce_tcp_performance_spikes
 net.ipv4.tcp_timestamps = 0
-
-# Increase netdev receive queue
-# May help prevent losing packets
 net.core.netdev_max_backlog = 16384
-
-# Disable TCP slow start after idle
-# Helps kill persistent single connection performance
 net.ipv4.tcp_slow_start_after_idle = 0
-
-# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
 net.ipv4.tcp_rfc1337 = 1
-
-# Set the maximum watches on files
 fs.inotify.max_user_watches = 524288
-
-# Set size of file handles and inode cache
 fs.file-max = 2097152
-
-# Increase writeback interval  for xfs
 fs.xfs.xfssyncd_centisecs = 10000
-
-# Only experimental!
-# Let Realtime tasks run as long they need
-# sched: RT throttling activated
 kernel.sched_rt_runtime_us=-1
-
-# AMD-specific
 dev.amdgpu.ppfeaturemask=0xffffffff
 SYSCTL
 
@@ -230,7 +143,7 @@ useradd -m -G wheel,video,input -s /bin/bash c0d3h01
 echo "c0d3h01:password" | chpasswd
 
 # Add user to sudo
-echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers #EDITOR:nano visudo
+echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 # Configure GRUB for AMD
 sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=""/GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off"/' /etc/default/grub
@@ -240,7 +153,7 @@ sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=2/' /etc/default/grub
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 
-# Enable AMD-specific services
+# Enable services
 systemctl enable thermald
 systemctl enable power-profiles-daemon
 systemctl enable NetworkManager
@@ -250,7 +163,7 @@ systemctl enable docker
 systemctl enable systemd-zram-setup@zram0.service
 systemctl enable fstrim.timer
 
-# Disable file indexing.
+# Disable file indexing
 sudo balooctl6 disable
 sudo balooctl6 purge
 
@@ -305,16 +218,16 @@ yay -S --needed --noconfirm \
     android-sdk \
     openjdk-src \
     postman-bin \
-    youtube-music-bin \ #Music is priority ;)
+    youtube-music-bin \
     notion-app-electron \
     zed \
     gparted \
     filelight
 
-# First remove orphaned packages if needed   #
+# Remove orphaned packages
 sudo pacman -Rns $(pacman -Qtdq) --noconfirm
 
-# Cachyos optimized repo best combination with arch ;)
+# Install CachyOS repo
 curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
@@ -322,9 +235,9 @@ sudo ./cachyos-repo.sh --remove
 
 yay -S --needed --noconfirm \
     ufw \
-    kdeconnect 
+    kdeconnect
 
-# Install all packages at once with --nodeps flag to avoid debug dependencies   #
+# Install packages with --nodeps flag
 yay -S --needed --noconfirm --nodeps \
     telegram-desktop-bin \
     github-desktop-bin \
@@ -333,25 +246,13 @@ yay -S --needed --noconfirm --nodeps \
     vesktop-bin \
     onlyoffice-bin
 
-# Envirnment installation (GNOME).
+# Install GNOME environment
 sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 
 # Enable UFW service
 sudo systemctl enable ufw
 
-EOF # END arch-chroot eof here.
-
-# Allow kdeconect
-#    sudo ufw enable
-#    sudo ufw allow 1714:1764/udp
-#    sudo ufw allow 1714:1764/tcp
-#    sudo ufw default deny incoming
-#    sudo ufw default allow outgoing
-#    sudo ufw allow ssh
-#    sudo ufw allow http
-#    sudo ufw allow https
-#    sudo ufw logging on
-#    sudo ufw reload
+EOF
 
 echo "Installation completed!"
 echo "Please remove installation media and reboot."
