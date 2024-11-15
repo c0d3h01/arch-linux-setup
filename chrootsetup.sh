@@ -1,51 +1,5 @@
 #!/bin/bash
 
-# Install CachyOS repo
-curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xvf cachyos-repo.tar.xz
-cd cachyos-repo
-chmod 777 ./cachyos-repo.sh
-sudo ./cachyos-repo.sh --remove
-
-# Yay installation
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd ..
-rm -rf yay
-
-yay -Syu --noconfirm
-
-yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight
-    kdeconnect
-    ufw
-
-# Remove orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm
-
-# Install packages with --nodeps flag
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
-# Install GNOME environment
-sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
-
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
@@ -108,11 +62,13 @@ AMD
 
 # Set root password
 echo "Setting root password..."
-echo "root:password" | chpasswd
+echo "root:password"
+passwd
 
 # Create user
 useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:password" | chpasswd
+echo "c0d3h01:password"
+passwd c0d3h01
 
 # Add user to sudo
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
@@ -124,32 +80,6 @@ sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=2/' /etc/default/grub
 # Install and configure bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-
-# Enable services
-systemctl enable thermald
-systemctl enable power-profiles-daemon
-systemctl enable NetworkManager
-systemctl enable bluetooth
-systemctl enable gdm
-systemctl enable docker
-systemctl enable systemd-zram-setup@zram0.service
-systemctl enable fstrim.timer
-
-# Disable file indexing
-sudo balooctl6 disable
-sudo balooctl6 purge
-
-sudo ufw enable
-sudo systemctl enable ufw
-sudo ufw allow 1714:1764/udp
-sudo ufw allow 1714:1764/tcp
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow ssh
-sudo ufw allow http
-sudo ufw allow https
-sudo ufw logging on
-sudo ufw reload
 
 # Configure power management for AMD
 cat > /etc/udev/rules.d/81-powersave.rules <<POWER
