@@ -31,19 +31,13 @@ btrfs subvolume create /mnt/@snapshots
 # Unmount to prepare for subvolume mounting
 umount /mnt
 
-# Create all necessary mount points
-mkdir -p /mnt/boot/efi
-mkdir -p /mnt/home
-mkdir -p /mnt/var
-mkdir -p /mnt/tmp
-mkdir -p /mnt/.snapshots
-#mkdir -p /mnt/var/log
-
 # Mount all subvolumes in correct order
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/nvme0n1p2 /mnt/var
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
+mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@ /dev/nvme0n1p2 /mnt
+mkdir -p /mnt/{home,var,tmp,.snapshots}
+mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@home /dev/nvme0n1p2 /mnt/home
+mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@var /dev/nvme0n1p2 /mnt/var
+mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
+mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
 #mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
 
 # Mount EFI partition last
