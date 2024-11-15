@@ -16,36 +16,6 @@ rm -rf yay
 
 yay -Syu --noconfirm
 
-yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight
-    kdeconnect
-    ufw
-
-# Remove orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm
-
-# Install packages with --nodeps flag
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
-# Install GNOME environment
-sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
-
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
@@ -124,6 +94,36 @@ sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=2/' /etc/default/grub
 # Install and configure bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
+
+yay -S --needed --noconfirm \
+    brave-bin \
+    zoom \
+    android-ndk \
+    android-sdk \
+    openjdk-src \
+    postman-bin \
+    youtube-music-bin \
+    notion-app-electron \
+    zed \
+    gparted \
+    filelight \
+    kdeconnect \
+    ufw
+
+# Remove orphaned packages
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm
+
+# Install packages with --nodeps flag
+yay -S --needed --noconfirm --nodeps \
+    telegram-desktop-bin \
+    github-desktop-bin \
+    visual-studio-code-bin \
+    ferdium-bin \
+    vesktop-bin \
+    onlyoffice-bin
+
+# Install GNOME environment
+sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 
 # Enable services
 systemctl enable thermald
