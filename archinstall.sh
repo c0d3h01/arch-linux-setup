@@ -10,7 +10,6 @@ sgdisk -o ${DRIVE}
 sgdisk -n 1:0:+1GB -t 1:ef00 -c 1:"EFI" \
        -n 2:0:0 -t 2:8300 -c 2:"ROOT" ${DRIVE}
 
-sleep 2
 partprobe ${DRIVE}
 
 # Format partitions
@@ -265,6 +264,18 @@ sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 sudo systemctl enable ufw
 
 EOF
+
+# Allow kdeconect
+#    sudo ufw enable
+#    sudo ufw allow 1714:1764/udp
+#    sudo ufw allow 1714:1764/tcp
+#    sudo ufw default deny incoming
+#    sudo ufw default allow outgoing
+#    sudo ufw allow ssh
+#    sudo ufw allow http
+#    sudo ufw allow https
+#    sudo ufw logging on
+#    sudo ufw reload
 
 echo "Installation completed!"
 echo "Please remove installation media and reboot."
