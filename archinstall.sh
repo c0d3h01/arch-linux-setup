@@ -8,40 +8,47 @@ timedatectl set-ntp true
 
 # Create partitions for drive
 echo "Creating partitions..."
-parted -s /dev/nvme0n1 mklabel gpt
-parted -s /dev/nvme0n1 mkpart primary fat32 1MiB 2049MiB     # 2GB EFI partition
-parted -s /dev/nvme0n1 set 1 esp on
-parted -s /dev/nvme0n1 mkpart primary btrfs 2049MiB 100%     # Rest for BTRFS root
 
 # Format partitions
 mkfs.fat -F32 /dev/nvme0n1p1
-mkfs.btrfs -f /dev/nvme0n1p2
+mkfs.btrfs -f -L root /dev/nvme0n1p2
 
-# Mount and create BTRFS subvolumes
-mount -o ssd,noatime /dev/nvme0n1p2 /mnt
+# Mount and create BTRFS subvolumes with improved structure
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async /dev/nvme0n1p2 /mnt
 
-# Create subvolumes
+# Create subvolumes with better organization
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@snapshots
-#btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@log
 
-# Unmount to prepare for subvolume mounting
+# Set BTRFS properties for better handling
+chattr +C /mnt/@var  # Disable CoW for /var
+chattr +C /mnt/@tmp  # Disable CoW for /tmp
+
+# Unmount for remounting with proper options
 umount /mnt
 
-# Mount all subvolumes in correct order
-mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@ /dev/nvme0n1p2 /mnt
-mkdir -p /mnt/{home,var,tmp,.snapshots}
-mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@home /dev/nvme0n1p2 /mnt/home
-mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@var /dev/nvme0n1p2 /mnt/var
-mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
-mount -o compress=zstd:2,space_cache=v2,ssd,discard=async,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
-#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+# Create necessary directories
+mkdir -p /mnt
+mkdir -p /mnt/{boot,home,var,tmp,.snapshots}
+mkdir -p /mnt/boot/efi
 
-# Mount EFI partition last
+# Mount subvolumes with optimized options
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@ /dev/nvme0n1p2 /mnt
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@home /dev/nvme0n1p2 /mnt/home
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@var /dev/nvme0n1p2 /mnt/var
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+
+# Mount EFI partition
 mount /dev/nvme0n1p1 /mnt/boot/efi
+
+# Generate fstab with better BTRFS options
+genfstab -U -p /mnt >> /mnt/etc/fstab
 
 # Install base system and AMD-specific packages
 pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
@@ -67,9 +74,6 @@ pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
     #lib32-vulkan-radeon \
     gamemode \
     corectrl
-
-# Generate fstab
-genfstab -U /mnt >> /mnt/etc/fstab
 
 # Chroot and configure system
 arch-chroot /mnt <<EOF
