@@ -139,6 +139,18 @@ systemctl enable fstrim.timer
 sudo balooctl6 disable
 sudo balooctl6 purge
 
+sudo ufw enable
+sudo systemctl enable ufw
+sudo ufw allow 1714:1764/udp
+sudo ufw allow 1714:1764/tcp
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw logging on
+sudo ufw reload
+
 # Configure power management for AMD
 cat > /etc/udev/rules.d/81-powersave.rules <<POWER
 ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
@@ -173,6 +185,3 @@ WantedBy=timers.target
 TIMER
 
 systemctl enable btrfs-scrub.timer
-
-# Enable UFW service
-sudo systemctl enable ufw
