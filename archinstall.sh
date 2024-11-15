@@ -37,6 +37,7 @@ mkdir -p /mnt
 mkdir -p /mnt/home
 mkdir -p /mnt/root
 mkdir -p /mnt/srv
+mkdir -p /mnt/var
 mkdir -p /mnt/var/cache
 mkdir -p /mnt/var/log
 mkdir -p /mnt/tmp
