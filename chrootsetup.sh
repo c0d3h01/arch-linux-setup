@@ -6,6 +6,45 @@ tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
 sudo ./cachyos-repo.sh --remove
 
+# Yay installation
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si --noconfirm
+cd ..
+rm -rf yay
+
+yay -Syu --noconfirm
+
+yay -S --needed --noconfirm \
+    brave-bin \
+    zoom \
+    android-ndk \
+    android-sdk \
+    openjdk-src \
+    postman-bin \
+    youtube-music-bin \
+    notion-app-electron \
+    zed \
+    gparted \
+    filelight
+    kdeconnect
+    ufw
+
+# Remove orphaned packages
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm
+
+# Install packages with --nodeps flag
+yay -S --needed --noconfirm --nodeps \
+    telegram-desktop-bin \
+    github-desktop-bin \
+    visual-studio-code-bin \
+    ferdium-bin \
+    vesktop-bin \
+    onlyoffice-bin
+
+# Install GNOME environment
+sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
+
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
@@ -133,47 +172,6 @@ WantedBy=timers.target
 TIMER
 
 systemctl enable btrfs-scrub.timer
-
-# Yay installation
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd ..
-rm -rf yay
-
-yay -Syu --noconfirm
-
-yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight
-
-# Remove orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm
-
-yay -S --needed --noconfirm \
-    ufw \
-    kdeconnect
-
-# Install packages with --nodeps flag
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
-# Install GNOME environment
-sudo pacman -S gnome gnome-terminal cachyos-gnome-settings --noconfirm
 
 # Enable UFW service
 sudo systemctl enable ufw
