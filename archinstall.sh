@@ -69,7 +69,7 @@ df -Th
 btrfs subvolume list /mnt
 
 # Install base system and AMD-specific packages
-pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
+pacstrap /mnt base base-devel linux linux-headers linux-firmware btrfs-progs \
     amd-ucode \
     networkmanager \
     grub efibootmgr \
