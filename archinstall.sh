@@ -1,66 +1,78 @@
 #!/bin/bash
 
-# Exit on any error
+# Exit immediately if a command exits with a non-zero status
 set -e
 
-# Set system time
-timedatectl set-ntp true
-
-# Define drive
+# Define drive (change this according to your drive)
 DRIVE="/dev/nvme0n1"
 
-# Create GPT partition table
-echo "Creating GPT partition table..."
-parted -s ${DRIVE} mklabel gpt
+# Clear any existing partition table
+sgdisk -Z ${DRIVE}
 
-# Create partitions
-echo "Creating partitions..."
-parted -s ${DRIVE} \
-    mkpart "EFI" fat32 1MiB 2049MiB \
-    set 1 esp on \
-    mkpart "ROOT" btrfs 2049MiB 100%
+# Create fresh GPT
+sgdisk -o ${DRIVE}
 
-# Wait a moment for the kernel to update partition table
+# Create optimized partition layout
+# 1. EFI partition (512MB)
+# 2. Root partition (remaining space)
+sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" \
+       -n 2:0:0 -t 2:8300 -c 2:"ROOT" ${DRIVE}
+
+# Ensure kernel updates partition table
+partprobe ${DRIVE}
 sleep 2
 
-# Format partitions
-echo "Formatting partitions..."
-mkfs.fat -F32 ${DRIVE}p1
-mkfs.btrfs -f -L root ${DRIVE}p2
+# Format EFI partition
+mkfs.fat -F32 -n "EFI" ${DRIVE}p1
 
-# Mount and create BTRFS subvolumes with improved structure
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async ${DRIVE}p2 /mnt
+# Format BTRFS with optimal settings
+mkfs.btrfs -f \
+    -L "ROOT" \
+    -n 32k \
+    -m single \
+    -d single \
+    ${DRIVE}p2
 
-# Create subvolumes with better organization
+# Mount root for subvolume creation
+mount -o compress=zstd:1,noatime ${DRIVE}p2 /mnt
+
+# Create optimized subvolume layout
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
-btrfs subvolume create /mnt/@var
-btrfs subvolume create /mnt/@tmp
-btrfs subvolume create /mnt/@snapshots
+btrfs subvolume create /mnt/@root
+btrfs subvolume create /mnt/@srv
+btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@tmp
 
-# Set BTRFS properties for better handling
-chattr +C /mnt/@var  # Disable CoW for /var
-chattr +C /mnt/@tmp  # Disable CoW for /tmp
+# Set specific BTRFS properties
+chattr +C /mnt/@cache  # Disable COW for pacman cache
+chattr +C /mnt/@log    # Disable COW for logs
+chattr +C /mnt/@tmp    # Disable COW for temporary files
 
-# Unmount for remounting with proper options
+# Unmount to prepare for final mount
 umount /mnt
 
-# Create necessary directories
+# Create all required mount points
 mkdir -p /mnt
-mkdir -p /mnt/{boot,home,var,tmp,.snapshots}
+mkdir -p /mnt/{boot,home,root,srv,var/cache,var/log,tmp}
 mkdir -p /mnt/boot/efi
 
 # Mount subvolumes with optimized options
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@ ${DRIVE}p2 /mnt
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@home ${DRIVE}p2 /mnt/home
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@var ${DRIVE}p2 /mnt/var
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@tmp ${DRIVE}p2 /mnt/tmp
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@snapshots ${DRIVE}p2 /mnt/.snapshots
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@log ${DRIVE}p2 /mnt/var/log
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@ ${DRIVE}p2 /mnt
+
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@home ${DRIVE}p2 /mnt/home
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@root ${DRIVE}p2 /mnt/root
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,discard=async,subvol=@srv ${DRIVE}p2 /mnt/srv
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@cache ${DRIVE}p2 /mnt/var/cache
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@log ${DRIVE}p2 /mnt/var/log
+mount -o compress=zstd:2,noatime,space_cache=v2,commit=120,autodefrag,nodatacow,discard=async,subvol=@tmp ${DRIVE}p2 /mnt/tmp
 
 # Mount EFI partition
 mount ${DRIVE}p1 /mnt/boot/efi
+
+# Verify mounts
+findmnt -t btrfs,vfat
 
 # Install base system and AMD-specific packages
 pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
