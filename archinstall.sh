@@ -26,7 +26,7 @@ btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@snapshots
-btrfs subvolume create /mnt/var/@log
+#btrfs subvolume create /mnt/@log
 
 # Unmount to prepare for subvolume mounting
 umount /mnt
@@ -37,14 +37,14 @@ mkdir -p /mnt/home
 mkdir -p /mnt/var
 mkdir -p /mnt/tmp
 mkdir -p /mnt/.snapshots
-mkdir -p /mnt/var/log
+#mkdir -p /mnt/var/log
 
 # Mount all subvolumes in correct order
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/nvme0n1p2 /mnt/var
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+#mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
 
 # Mount EFI partition last
 mount /dev/nvme0n1p1 /mnt/boot/efi
