@@ -78,7 +78,7 @@ pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
 genfstab -U /mnt >> /mnt/etc/fstab
 
 # Chroot and configure system
-arch-chroot /mnt /bin/bash <<EOF
+arch-chroot /mnt <<EOF
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
