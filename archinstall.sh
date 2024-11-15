@@ -23,7 +23,6 @@ mount ${DRIVE}p2 /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@root
-btrfs subvolume create /mnt/@srv
 btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@log
@@ -36,7 +35,6 @@ umount /mnt
 mkdir -p /mnt
 mkdir -p /mnt/home
 mkdir -p /mnt/root
-mkdir -p /mnt/srv
 mkdir -p /mnt/var
 mkdir -p /mnt/var/cache
 mkdir -p /mnt/var/log
@@ -49,7 +47,7 @@ mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@ ${DRIVE}p2 /mnt
 # Mount other subvolumes only after root is mounted
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@home ${DRIVE}p2 /mnt/home
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@root ${DRIVE}p2 /mnt/root
-mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@srv ${DRIVE}p2 /mnt/srv
+mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@var ${DRIVE}p2 /mnt/var
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@cache ${DRIVE}p2 /mnt/var/cache
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@log ${DRIVE}p2 /mnt/var/log
 mount -o compress=zstd:1,noatime,space_cache=v2,subvol=@tmp ${DRIVE}p2 /mnt/tmp
