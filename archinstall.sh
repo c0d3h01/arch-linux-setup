@@ -7,7 +7,7 @@ DRIVE="/dev/nvme0n1"
 # Clear and create partitions
 sgdisk -Z ${DRIVE}
 sgdisk -o ${DRIVE}
-sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" \
+sgdisk -n 1:0:+1GB -t 1:ef00 -c 1:"EFI" \
        -n 2:0:0 -t 2:8300 -c 2:"ROOT" ${DRIVE}
 
 sleep 2
