@@ -6,15 +6,30 @@ set -e
 # Set system time
 timedatectl set-ntp true
 
-# Create partitions for drive
+# Define drive
+DRIVE="/dev/nvme0n1"
+
+# Create GPT partition table
+echo "Creating GPT partition table..."
+parted -s ${DRIVE} mklabel gpt
+
+# Create partitions
 echo "Creating partitions..."
+parted -s ${DRIVE} \
+    mkpart "EFI" fat32 1MiB 2049MiB \
+    set 1 esp on \
+    mkpart "ROOT" btrfs 2049MiB 100%
+
+# Wait a moment for the kernel to update partition table
+sleep 2
 
 # Format partitions
-mkfs.fat -F32 /dev/nvme0n1p1
-mkfs.btrfs -f -L root /dev/nvme0n1p2
+echo "Formatting partitions..."
+mkfs.fat -F32 ${DRIVE}p1
+mkfs.btrfs -f -L root ${DRIVE}p2
 
 # Mount and create BTRFS subvolumes with improved structure
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async /dev/nvme0n1p2 /mnt
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async ${DRIVE}p2 /mnt
 
 # Create subvolumes with better organization
 btrfs subvolume create /mnt/@
@@ -37,18 +52,15 @@ mkdir -p /mnt/{boot,home,var,tmp,.snapshots}
 mkdir -p /mnt/boot/efi
 
 # Mount subvolumes with optimized options
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@ /dev/nvme0n1p2 /mnt
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@home /dev/nvme0n1p2 /mnt/home
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@var /dev/nvme0n1p2 /mnt/var
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
-mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@ ${DRIVE}p2 /mnt
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@home ${DRIVE}p2 /mnt/home
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@var ${DRIVE}p2 /mnt/var
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,nodatacow,subvol=@tmp ${DRIVE}p2 /mnt/tmp
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@snapshots ${DRIVE}p2 /mnt/.snapshots
+mount -o compress=zstd:1,noatime,space_cache=v2,ssd,discard=async,subvol=@log ${DRIVE}p2 /mnt/var/log
 
 # Mount EFI partition
-mount /dev/nvme0n1p1 /mnt/boot/efi
-
-# Generate fstab with better BTRFS options
-genfstab -U -p /mnt >> /mnt/etc/fstab
+mount ${DRIVE}p1 /mnt/boot/efi
 
 # Install base system and AMD-specific packages
 pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
