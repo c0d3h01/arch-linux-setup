@@ -27,8 +27,8 @@ yay -S --needed --noconfirm \
     notion-app-electron \
     zed \
     gparted \
-    filelight
-    kdeconnect
+    filelight \
+    kdeconnect \
     ufw
 
 # Remove orphaned packages
