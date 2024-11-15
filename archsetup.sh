@@ -1,8 +1,9 @@
 #!/bin/bash
 
-####################
-rate-mirrors arch  #
-####################
+#######################
+# Update Arch mirrors #
+#######################
+rate-mirrors arch
 
 ####################################
 # System update and base packages  #
@@ -13,9 +14,9 @@ sudo pacman -S --needed --noconfirm base-devel git wget curl
 ###############
 # Install yay #
 ###############
-if ! command -v yay &>/dev/null; then
+if [! command -v yay &>/dev/null]; then
     git clone https://aur.archlinux.org/yay.git
-    cd yay 
+    cd yay
     makepkg -si --noconfirm
     cd ..
     rm -rf yay
@@ -36,11 +37,11 @@ sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 ####################
 # Cashyos repo add #
 ####################
-wget https://mirror.cachyos.org/cachyos-repo.tar.xz 
+wget https://mirror.cachyos.org/cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
 sudo ./cachyos-repo.sh
-sudo cachyos-rate-mirrors 
+sudo cachyos-rate-mirrors
 
 #################
 # AUR packages  #
@@ -63,7 +64,7 @@ yay -S --needed --noconfirm \
     alsa-plugins \
     alsa-firmware \
     sof-firmware \
-    alsa-card-profiles \   
+    alsa-card-profiles \
     filelight \
     ufw-extras \
     ananicy-cpp \
@@ -71,8 +72,7 @@ yay -S --needed --noconfirm \
     memavaild \
     nohang \
     preload \
-    prelockd \
-    uresourced 
+    prelockd
 
 ##############################################
 # First remove orphaned packages if needed   #
@@ -93,7 +93,7 @@ yay -S --needed --noconfirm --nodeps \
 ######################################################
 # Clean up orphaned packages after all installations #
 ######################################################
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm 
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm
 
 ##############################
 # Install official packages  #
@@ -101,17 +101,18 @@ sudo pacman -Rns $(pacman -Qtdq) --noconfirm
 sudo pacman -S --needed --noconfirm \
     neovim \
     htop \
+    glances \
     #fish \
     nerdfetch \
     docker \
     nodejs \
     npm \
     #spectacle
-    #udisks2 \ 
+    #udisks2 \
     gvfs \
     gvfs-mtp \
     kdeconnect
-    
+
 ###################
 # Enable services #
 ###################
@@ -125,62 +126,46 @@ sudo balooctl6 disable
 sudo balooctl6 purge
 
 #######################
-#Enable bluetooth     #
+# Enable bluetooth    #
 #######################
 sudo systemctl start bluetooth.service
 sudo systemctl enable bluetooth.service
 
 ####################################
-#Perf tweaks services enable/start #
+# Perf tweaks services enable/start #
 ####################################
 
-###########################################################
-# Disable the systemd-oomd service (Out Of Memory Daemon) #
-###########################################################
+# Disable the systemd-oomd service (Out Of Memory Daemon)
 sudo systemctl disable systemd-oomd.service
 sudo systemctl stop systemd-oomd.service
 
-######################################################
-# Enable and start performance optimization services #
-# Preload - Adaptive readahead daemon                #
-######################################################
+# Enable and start performance optimization services
+# Preload - Adaptive readahead daemon
 sudo systemctl enable preload.service
 sudo systemctl start preload.service
 
-##########################################################
-# Optional performance services (uncomment if installed) #
-# Ananicy-CPP - Auto nice daemon in C++                  #
-##########################################################
+# Optional performance services (uncomment if installed)
+# Ananicy-CPP - Auto nice daemon in C++
 sudo systemctl enable ananicy-cpp.service
 sudo systemctl start ananicy-cpp.service
 
-##################################################################
-# IRQ Balance - Distribute hardware interrupts across processors #
-##################################################################
+# IRQ Balance - Distribute hardware interrupts across processors
 sudo systemctl enable irqbalance.service
 sudo systemctl start irqbalance.service
 
-#######################################################
-# Memory management services (uncomment if installed) #
-#######################################################
+# Memory management services (uncomment if installed)
 sudo systemctl enable memavaild.service
 sudo systemctl start memavaild.service
 
-######################
-# Low memory handler #
-######################
+# Low memory handler
 sudo systemctl enable nohang.service
 sudo systemctl start nohang.service
 
-##################################
-# Process resource usage daemon  #
-##################################
+# Process resource usage daemon
 sudo systemctl enable uresourced.service
 sudo systemctl start uresourced.service
 
-#####################################
-# Prelockd - Memory locking daemon  #
-#####################################
+# Prelockd - Memory locking daemon
 sudo systemctl enable prelockd.service
 sudo systemctl start prelockd.service
 
@@ -191,6 +176,7 @@ sudo systemctl enable ufw.service
 sudo systemctl start ufw.service
 sudo ufw enable
 
+# No-hang Zram config
 sudo sed -i 's|zram_checking_enabled = False|zram_checking_enabled = True|g' /etc/nohang/nohang.conf
 
 ########################
@@ -214,12 +200,11 @@ sudo pacman -Scc --noconfirm
 paru -Syyu --noconfirm
 
 ###########################
-sudo pacman -S gnome
+sudo pacman -S gnome --noconfirm
 sudo systemctl enable gdm
 ###########################
 
 ###########################
-# Start Gnome envirnment 
+# Start Gnome envirnment
 ###########################
 sudo systemctl start gdm
-
