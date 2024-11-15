@@ -17,8 +17,10 @@ parted -s /dev/nvme0n1 mkpart primary btrfs 2049MiB 100%     # Rest for BTRFS ro
 mkfs.fat -F32 /dev/nvme0n1p1
 mkfs.btrfs -f /dev/nvme0n1p2
 
-# Mount and create BTRFS subvolumes with optimizations for SSD
+# Mount and create BTRFS subvolumes
 mount -o ssd,noatime /dev/nvme0n1p2 /mnt
+
+# Create subvolumes
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
@@ -26,25 +28,29 @@ btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@snapshots
 btrfs subvolume create /mnt/@log
 
-# Unmount and remount with proper options
+# Unmount to prepare for subvolume mounting
 umount /mnt
 
-# Create the base directory
+# Create mount point and mount root subvolume
+mkdir -p /mnt
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/nvme0n1p2 /mnt
 
-# Create all directories first, including var/log
-mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots}
+# Create all necessary mount points
+mkdir -p /mnt/boot/efi
+mkdir -p /mnt/home
+mkdir -p /mnt/var
+mkdir -p /mnt/tmp
+mkdir -p /mnt/.snapshots
 mkdir -p /mnt/var/log
 
-# Reordered mounts - mount root (@) first
-mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@ /dev/nvme0n1p2 /mnt
-
-# Then mount all other subvolumes after creating directories
+# Mount all subvolumes in correct order
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@home /dev/nvme0n1p2 /mnt/home
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@var /dev/nvme0n1p2 /mnt/var
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@tmp /dev/nvme0n1p2 /mnt/tmp
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@snapshots /dev/nvme0n1p2 /mnt/.snapshots
 mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,subvol=@log /dev/nvme0n1p2 /mnt/var/log
+
+# Mount EFI partition last
 mount /dev/nvme0n1p1 /mnt/boot/efi
 
 # Install base system and AMD-specific packages
