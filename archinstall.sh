@@ -50,7 +50,7 @@ mount -o noatime,compress=zstd:2,space_cache=v2,ssd,discard=async,autodefrag,sub
 mount /dev/nvme0n1p1 /mnt/boot/efi
 
 # Install base system and AMD-specific packages
-pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \ --noconfirm
+pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
     amd-ucode \
     networkmanager \
     grub efibootmgr \
