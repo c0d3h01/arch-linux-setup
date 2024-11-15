@@ -69,8 +69,8 @@ pacstrap -i /mnt base base-devel linux linux-headers linux-firmware \
     libva-mesa-driver \
     mesa-vdpau \
     mesa \
-    lib32-mesa \
-    lib32-vulkan-radeon \
+    #lib32-mesa \
+    #lib32-vulkan-radeon \
     gamemode \
     corectrl
 
