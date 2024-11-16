@@ -160,11 +160,11 @@ echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
 # 4. User Management
 # Set root password
 echo "Setting root password..."
-echo "root:password" | chpasswd
+echo "root:1991" | chpasswd
 
 # Create user and set password
 useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:password" | chpasswd
+echo "c0d3h01:1991" | chpasswd
 
 # Configure sudo
 sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
