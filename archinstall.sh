@@ -285,12 +285,11 @@ echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
 # 4. User Management
 # Set root password
 echo "Setting root password..."
-read -s root_passwd
-echo "root:$root_passwd" | chpasswd
+echo "root:1991" | chpasswd
 
 # Create user and set password
 useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:$root_passwd" | chpasswd
+echo "c0d3h01:1991" | chpasswd
 
 # Configure sudo
 sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
@@ -337,9 +336,6 @@ mkinitcpio -P
 EOF
 
 echo "Chroot setup completed successfully!"
-
-# Enter in created usr
-su - c0d3h01
 
 # Configure pacman
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
