@@ -1,11 +1,7 @@
 #!/bin/bash
-#set -e  # Exit on error
-set -x 
+set -e  # Exit on error
 exec > >(tee -a script_debug.log) 2>&1
 
-# Script configuration
-USERSETUP="./usrsetup.sh"
-CHROOTSETUP="./chrootsetup.sh"
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
 ROOT_PART="${DRIVE}p2"
@@ -138,7 +134,6 @@ genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt /bin/bash <<EOF
 
 echo "Chroot setup starting"
-sleep 5
 
 # 1. Basic System Configuration
 # Set timezone
@@ -345,7 +340,6 @@ mkinitcpio -P
 EOF
 
 echo "Chroot setup completed successfully!"
-sleep 5
 
 # Enter in created usr
 su - c0d3h01
