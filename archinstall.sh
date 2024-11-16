@@ -106,11 +106,10 @@ echo "Installing base system..."
         radeontop \
         networkmanager \
         grub efibootmgr \
-        neovim htop glances git \
+        neovim glances git \
         gcc gdb cmake make \
         python python-pip \
         nodejs npm \
-        docker \
         git-lfs \
         zram-generator \
         power-profiles-daemon \
@@ -119,9 +118,7 @@ echo "Installing base system..."
         gamemode \
         corectrl \
         acpid \
-        cpupower \
         lm_sensors \
-        smartmontools \
         nvme-cli \
         powertop \
         s-tui \
