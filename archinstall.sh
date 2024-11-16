@@ -102,33 +102,6 @@ df -Th
 btrfs subvolume list /mnt
 
 echo "Installing base system..."
-# Base packages installation
-pacstrap /mnt \
-    base base-devel \
-    linux linux-headers linux-firmware \
-    btrfs-progs \
-    amd-ucode \
-    networkmanager \
-    grub efibootmgr \
-    neovim htop glances git \
-    gcc gdb cmake make \
-    python python-pip \
-    nodejs npm \
-    docker \
-    git-lfs \
-    btrfs-progs \
-    zram-generator \
-    power-profiles-daemon \
-    thermald \
-    xf86-video-amdgpu \
-    vulkan-radeon \
-    libva-mesa-driver \
-    mesa-vdpau \
-    mesa \
-    bluez bluez-utils \
-    gamemode \
-    corectrl
-
 # Install base system and AMD-specific packages
     pacstrap /mnt \
         base base-devel \

@@ -7,6 +7,19 @@ if [ "$(id -u)" = "0" ]; then
    exit 1
 fi
 
+# Configure pacman  #
+sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
+sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
+
+# System update and base packages
+sudo pacman -Syu --noconfirm \
+    cachyos-rate-mirrors
+
+# Update Arch mirrors
+rate-mirrors arch
+sudo cachyos-rate-mirrors
+
 echo "Installing CachyOS repository..."
 # Install CachyOS repo
 cd /tmp
