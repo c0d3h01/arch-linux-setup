@@ -129,6 +129,56 @@ pacstrap /mnt \
     gamemode \
     corectrl
 
+# Install base system and AMD-specific packages
+    pacstrap /mnt \
+        base base-devel \
+        linux linux-headers linux-firmware \
+        btrfs-progs \
+        # AMD CPU & GPU
+        amd-ucode \
+        xf86-video-amdgpu \
+        vulkan-radeon \
+        libva-mesa-driver \
+        mesa-vdpau \
+        mesa \
+        vulkan-icd-loader \
+        lib32-vulkan-icd-loader \
+        vulkan-tools \
+        lib32-mesa \
+        lib32-vulkan-radeon \
+        lib32-libva-mesa-driver \
+        lib32-mesa-vdpau \
+        libva-utils \
+        vdpauinfo \
+        radeontop \
+        # System utilities
+        networkmanager \
+        grub efibootmgr \
+        neovim htop glances git \
+        gcc gdb cmake make \
+        python python-pip \
+        nodejs npm \
+        docker \
+        git-lfs \
+        zram-generator \
+        power-profiles-daemon \
+        thermald \
+        bluez bluez-utils \
+        gamemode \
+        corectrl \
+        # Additional system utilities
+        acpid \
+        cpupower \
+        lm_sensors \
+        smartmontools \
+        nvme-cli \
+        # Performance monitoring
+        powertop \
+        s-tui \
+        # Hardware video acceleration
+        gstreamer-vaapi \
+        ffmpeg
+
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
