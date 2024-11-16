@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e  # Exit on error
+set -x 
+exec > >(tee -a script_debug.log) 2>&1
 
 # Script configuration
 USERSETUP="./usrsetup.sh"
