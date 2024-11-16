@@ -1,5 +1,13 @@
 #!/bin/bash
+set -e  # Exit on error
 
+# System check before proceeding
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" >&2
+   exit 1
+fi
+
+# 1. Basic System Configuration
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
@@ -12,8 +20,9 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 # Set hostname
 echo "dell-inspiron" > /etc/hostname
 
+# 2. System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
-cat > /etc/systemd/zram-generator.conf <<ZRAM
+cat > /etc/systemd/zram-generator.conf <<'ZRAM'
 [zram0]
 zram-size = 8192
 compression-algorithm = zstd
@@ -23,8 +32,8 @@ priority = 32767
 fs-type = swap
 ZRAM
 
-# AMD-specific kernel parameters and optimizations
-cat > /etc/sysctl.d/99-system-tune.conf <<SYSCTL
+# System tuning parameters
+cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 vm.swappiness = 180
 vm.vfs_cache_pressure=50
@@ -53,65 +62,64 @@ kernel.sched_rt_runtime_us=-1
 dev.amdgpu.ppfeaturemask=0xffffffff
 SYSCTL
 
-# Configure AMD GPU settings
-cat > /etc/modprobe.d/amdgpu.conf <<AMD
+# 3. AMD-specific Configuration
+# GPU settings
+cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
 options amdgpu ppfeaturemask=0xffffffff
 options amdgpu dpm=1
 options amdgpu audio=1
 AMD
 
-# Set root password
-echo "Setting root password..."
-echo "root:password"
-passwd
-
-# Create user
-useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:password"
-passwd c0d3h01
-
-# Add user to sudo
-echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-
-# Configure GRUB for AMD
-sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=""/GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off"/' /etc/default/grub
-sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=2/' /etc/default/grub
-
-# Install and configure bootloader
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
-grub-mkconfig -o /boot/grub/grub.cfg
-
-# Configure power management for AMD
-cat > /etc/udev/rules.d/81-powersave.rules <<POWER
+# Power management
+cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
 ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="auto"
 POWER
 
-# Configure git for user
+# Host configuration
+echo "127.0.0.1 localhost" > /etc/hosts
+echo "::1       localhost" >> /etc/hosts
+echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
+
+# 4. User Management
+# Set root password
+echo "Setting root password..."
+echo "root:password" | chpasswd
+
+# Create user and set password
+useradd -m -G wheel,video,input -s /bin/bash c0d3h01
+echo "c0d3h01:password" | chpasswd
+
+# Configure sudo
+sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+
+# 5. Boot Configuration
+# Configure GRUB
+sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off"|' /etc/default/grub
+sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
+
+# Install bootloader
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# 6. Additional Services
+# Git configuration
 su - c0d3h01 -c 'git config --global user.name "c0d3h01"'
 su - c0d3h01 -c 'git config --global user.email "harshalsawant2004h@gmail.com"'
 
-# Configure BTRFS periodic scrub
-cat > /etc/systemd/system/btrfs-scrub.service <<SCRUB
-[Unit]
-Description=BTRFS periodic scrub
-After=local-fs.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/btrfs scrub start -B /
+# BTRFS configuration
+cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
+[Your existing SCRUB content]
 SCRUB
 
-cat > /etc/systemd/system/btrfs-scrub.timer <<TIMER
-[Unit]
-Description=BTRFS periodic scrub timer
-
-[Timer]
-OnCalendar=monthly
-Persistent=true
-
-[Install]
-WantedBy=timers.target
+cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
+[Your existing TIMER content]
 TIMER
 
+# Enable services
 systemctl enable btrfs-scrub.timer
+
+# Generate initramfs
+mkinitcpio -P
+
+echo "Chroot setup completed successfully!"

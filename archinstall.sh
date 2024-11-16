@@ -1,18 +1,42 @@
 #!/bin/bash
+set -e  # Exit on error
 
-# Define drive and mount points
+# Script configuration
+USERSETUP="./usrsetup.sh"
+CHROOTSETUP="./chrootsetup.sh"
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
 ROOT_PART="${DRIVE}p2"
 
+# Check if running as root
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" >&2
+   exit 1
+fi
+
+# Check if scripts exist
+if [ ! -f "$USERSETUP" ] || [ ! -f "$CHROOTSETUP" ]; then
+    echo "Setup scripts not found!" >&2
+    exit 1
+fi
+
+# Function to handle errors
+error_handler() {
+    echo "An error occurred on line $1"
+    exit 1
+}
+trap 'error_handler ${LINENO}' ERR
+
+echo "Starting Arch Linux installation..."
+
+echo "Preparing disk partitions..."
 # Clear all partition data and GPT/MBR structures
 sgdisk --zap-all ${DRIVE}
 sgdisk --clear ${DRIVE}
-
-# Set optimal alignment for NVMe performance
 sgdisk --set-alignment=8 ${DRIVE}
 
 # Create partitions
+echo "Creating partitions..."
 sgdisk --new=1:0:+2G \
        --typecode=1:ef00 \
        --change-name=1:"EFI" \
@@ -21,55 +45,68 @@ sgdisk --new=1:0:+2G \
        --change-name=2:"ROOT" \
        --attributes=2:set:2 \
        ${DRIVE}
-       
+
 # Verify partitions
+echo "Verifying partitions..."
 sgdisk --verify ${DRIVE}
 partprobe ${DRIVE}
 
 # Format partitions
+echo "Formatting partitions..."
 mkfs.fat -F32 -n EFI ${EFI_PART}
-
-# Format BTRFS with optimal settings for NVMe
 mkfs.btrfs -f \
     -L ROOT \
     -n 32k \
     -m dup \
     ${ROOT_PART}
 
+echo "Setting up BTRFS subvolumes..."
 # Mount ROOT partition
 mount ${ROOT_PART} /mnt
 
 # Create BTRFS subvolumes
-cd /mnt
+pushd /mnt
 btrfs subvolume create @
 btrfs subvolume create @home
 btrfs subvolume create @var
 btrfs subvolume create @log
 btrfs subvolume create @pkg
 btrfs subvolume create @.snapshots
+popd
 
 # Unmount and remount with subvolumes
-cd /
 umount /mnt
 
-# Mount subvolumes with optimal options
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@ ${ROOT_PART} /mnt
+echo "Mounting subvolumes..."
+# Mount options
+MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2,commit=120"
+
+# Mount subvolumes
+mount -o ${MOUNT_OPTS},subvol=@ ${ROOT_PART} /mnt
+
+# Create mount points
 mkdir -p /mnt/{home,var,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@home ${ROOT_PART} /mnt/home
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@var ${ROOT_PART} /mnt/var
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@log ${ROOT_PART} /mnt/var/log
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@pkg ${ROOT_PART} /mnt/var/cache/pacman/pkg
-mount -o noatime,compress=zstd:1,space_cache=v2,commit=120,subvol=@.snapshots ${ROOT_PART} /mnt/.snapshots
+
+# Mount other subvolumes
+mount -o ${MOUNT_OPTS},subvol=@home ${ROOT_PART} /mnt/home
+mount -o ${MOUNT_OPTS},subvol=@var ${ROOT_PART} /mnt/var
+mount -o ${MOUNT_OPTS},subvol=@log ${ROOT_PART} /mnt/var/log
+mount -o ${MOUNT_OPTS},subvol=@pkg ${ROOT_PART} /mnt/var/cache/pacman/pkg
+mount -o ${MOUNT_OPTS},subvol=@.snapshots ${ROOT_PART} /mnt/.snapshots
 
 # Mount EFI partition
 mount ${EFI_PART} /mnt/boot/efi
 
-# Verify mounts
+echo "Verifying mount points..."
 df -Th
 btrfs subvolume list /mnt
 
-# Install base system and AMD-specific packages
-pacstrap /mnt base base-devel linux linux-headers linux-firmware btrfs-progs \
+echo "Installing base system..."
+# Base packages installation
+pacstrap /mnt \
+    base base-devel \
+    linux linux-headers linux-firmware \
+    btrfs-progs \
     amd-ucode \
     networkmanager \
     grub efibootmgr \
@@ -89,8 +126,18 @@ pacstrap /mnt base base-devel linux linux-headers linux-firmware btrfs-progs \
     mesa-vdpau \
     mesa \
     bluez bluez-utils \
-    #lib32-mesa \
-    #lib32-vulkan-radeon \
     gamemode \
     corectrl
-    
+
+echo "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
+
+echo "Setting up execution permissions for setup scripts..."
+chmod +x ${CHROOTSETUP} ${USERSETUP}
+
+echo "Entering chroot environment..."
+# Copy setup scripts to /mnt
+cp ${CHROOTSETUP} ${USERSETUP} /mnt/
+arch-chroot /mnt /bin/bash -c "./chrootsetup.sh && ./usrsetup.sh"
+
+echo "Installation completed successfully!"
