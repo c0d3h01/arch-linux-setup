@@ -70,7 +70,7 @@ mount ${ROOT_PART} /mnt
 pushd /mnt
 btrfs subvolume create @
 btrfs subvolume create @home
-btrfs subvolume create @var
+#btrfs subvolume create @var
 btrfs subvolume create @log
 btrfs subvolume create @pkg
 btrfs subvolume create @.snapshots
@@ -87,13 +87,13 @@ MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2,commit=120"
 mount -o ${MOUNT_OPTS},subvol=@ ${ROOT_PART} /mnt
 
 # Create mount points
-mkdir -p /mnt/{home,var,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
+mkdir -p /mnt/{home,var/log,var/cache,.snapshots,boot/efi}
 
 # Mount other subvolumes
 mount -o ${MOUNT_OPTS},subvol=@home ${ROOT_PART} /mnt/home
-mount -o ${MOUNT_OPTS},subvol=@var ${ROOT_PART} /mnt/var
+#mount -o ${MOUNT_OPTS},subvol=@var ${ROOT_PART} /mnt/var
 mount -o ${MOUNT_OPTS},subvol=@log ${ROOT_PART} /mnt/var/log
-mount -o ${MOUNT_OPTS},subvol=@pkg ${ROOT_PART} /mnt/var/cache/pacman/pkg
+mount -o ${MOUNT_OPTS},subvol=@pkg ${ROOT_PART} /mnt/var/cache
 mount -o ${MOUNT_OPTS},subvol=@.snapshots ${ROOT_PART} /mnt/.snapshots
 
 # Mount EFI partition
