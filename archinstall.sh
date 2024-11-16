@@ -104,12 +104,7 @@ echo "Installing base system..."
         mesa-vdpau \
         mesa \
         vulkan-icd-loader \
-        lib32-vulkan-icd-loader \
         vulkan-tools \
-        lib32-mesa \
-        lib32-vulkan-radeon \
-        lib32-libva-mesa-driver \
-        lib32-mesa-vdpau \
         libva-utils \
         vdpauinfo \
         radeontop \
