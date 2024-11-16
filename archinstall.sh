@@ -176,10 +176,6 @@ grub-mkconfig -o /boot/grub/grub.cfg
 su - c0d3h01 -c 'git config --global user.name "c0d3h01"'
 su - c0d3h01 -c 'git config --global user.email "harshalsawant2004h@gmail.com"'
 
-# Generate initramfs
-mkinitcpio -P
-EOF
-
 echo "Chroot setup completed successfully!"
 
 # Configure pacman
@@ -453,10 +449,7 @@ echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.
 
 # Docker post installation
 sudo usermod -aG docker $USER
-
-# Create necessary directories for Android development
-echo "Setting up Android development environment..."
-mkdir -p ~/Android/Sdk
+EOF
 
 umount -R /mnt
 
