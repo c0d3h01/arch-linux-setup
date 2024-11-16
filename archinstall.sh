@@ -97,7 +97,6 @@ echo "Installing base system..."
         base base-devel \
         linux linux-headers linux-firmware \
         btrfs-progs \
-        # AMD CPU & GPU
         amd-ucode \
         xf86-video-amdgpu \
         vulkan-radeon \
@@ -114,7 +113,6 @@ echo "Installing base system..."
         libva-utils \
         vdpauinfo \
         radeontop \
-        # System utilities
         networkmanager \
         grub efibootmgr \
         neovim htop glances git \
@@ -129,16 +127,13 @@ echo "Installing base system..."
         bluez bluez-utils \
         gamemode \
         corectrl \
-        # Additional system utilities
         acpid \
         cpupower \
         lm_sensors \
         smartmontools \
         nvme-cli \
-        # Performance monitoring
         powertop \
         s-tui \
-        # Hardware video acceleration
         gstreamer-vaapi \
         ffmpeg
 
@@ -303,18 +298,19 @@ echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
 # 4. User Management
 # Set root password
 echo "Setting root password..."
-echo "root:1991" | chpasswd
+read -s root_passwd
+echo "root:$root_passwd" | chpasswd
 
 # Create user and set password
 useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:1991" | chpasswd
+echo "c0d3h01:$root_passwd" | chpasswd
 
 # Configure sudo
 sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 
 # 5. Boot Configuration
 # Configure GRUB
-sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off"|' /etc/default/grub
+sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
 sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 
 # Install bootloader
