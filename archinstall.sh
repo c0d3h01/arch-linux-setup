@@ -132,7 +132,7 @@ arch-chroot /mnt /bin/bash <<EOF
 
 echo "Chroot setup starting"
 
-# 1. Basic System Configuration
+# Basic System Configuration
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
 hwclock --systohc
@@ -145,7 +145,116 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 # Set hostname
 echo "dell-inspiron" > /etc/hostname
 
-# 2. System Optimization
+# Host configuration
+echo "127.0.0.1 localhost" > /etc/hosts
+echo "::1       localhost" >> /etc/hosts
+echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
+
+# 4. User Management
+# Set root password
+echo "Setting root password..."
+echo "root:1991" | chpasswd
+
+# Create user and set password
+useradd -m -G wheel,video,input -s /bin/bash c0d3h01
+echo "c0d3h01:1991" | chpasswd
+
+# Configure sudo
+sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+
+# 5. Boot Configuration
+# Configure GRUB
+sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
+sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
+
+# Install bootloader
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# 6. Additional Services
+# Git configuration
+su - c0d3h01 -c 'git config --global user.name "c0d3h01"'
+su - c0d3h01 -c 'git config --global user.email "harshalsawant2004h@gmail.com"'
+
+# Generate initramfs
+mkinitcpio -P
+EOF
+
+echo "Chroot setup completed successfully!"
+
+# Configure pacman
+sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
+sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
+
+echo "Installing CachyOS repository..."
+# Install CachyOS repo
+curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+tar xf ./cachyos-repo.tar.xz
+cd cachyos-repo
+chmod +x ./cachyos-repo.sh
+sudo ./cachyos-repo.sh --remove
+
+# System update and base packages
+sudo pacman -Syu --noconfirm
+     cachyos-rate-mirrors
+     
+# Update Arch mirrors
+rate-mirrors arch
+sudo cachyos-rate-mirrors
+
+echo "Installing (yay)..."
+# Yay installation
+cd /tmp
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si --noconfirm
+cd ..
+rm -rf yay
+
+echo "Updating system..."
+yay -Syu --noconfirm
+
+echo "Installing regular packages..."
+# Regular package installation
+yay -S --needed --noconfirm \
+    brave-bin \
+    zoom \
+    android-ndk \
+    android-sdk \
+    openjdk-src \
+    postman-bin \
+    youtube-music-bin \
+    notion-app-electron \
+    zed \
+    gparted \
+    filelight \
+    kdeconnect \
+    ufw \
+    docker
+
+echo "Installing packages with --nodeps flag..."
+# Packages with --nodeps
+yay -S --needed --noconfirm --nodeps \
+    telegram-desktop-bin \
+    github-desktop-bin \
+    visual-studio-code-bin \
+    ferdium-bin \
+    vesktop-bin \
+    onlyoffice-bin
+
+echo "Installing GNOME environment..."
+# GNOME installation
+sudo pacman -S --needed --noconfirm \
+    gnome \
+    gnome-terminal \
+    cachyos-gnome-settings
+
+echo "Removing orphaned packages..."
+# Cleanup orphaned packages
+sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
+
+# System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
 cat > /etc/systemd/zram-generator.conf <<'ZRAM'
 [zram0]
@@ -263,7 +372,7 @@ kernel.sched_rt_runtime_us=-1
 dev.amdgpu.ppfeaturemask=0xffffffff
 SYSCTL
 
-# 3. AMD-specific Configuration
+# AMD-specific Configuration
 # GPU settings
 cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
 options amdgpu ppfeaturemask=0xffffffff
@@ -276,37 +385,6 @@ cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
 ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="auto"
 POWER
-
-# Host configuration
-echo "127.0.0.1 localhost" > /etc/hosts
-echo "::1       localhost" >> /etc/hosts
-echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
-
-# 4. User Management
-# Set root password
-echo "Setting root password..."
-echo "root:1991" | chpasswd
-
-# Create user and set password
-useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:1991" | chpasswd
-
-# Configure sudo
-sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
-
-# 5. Boot Configuration
-# Configure GRUB
-sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
-sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
-
-# Install bootloader
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
-grub-mkconfig -o /boot/grub/grub.cfg
-
-# 6. Additional Services
-# Git configuration
-su - c0d3h01 -c 'git config --global user.name "c0d3h01"'
-su - c0d3h01 -c 'git config --global user.email "harshalsawant2004h@gmail.com"'
 
 # BTRFS configuration
 cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
@@ -330,85 +408,6 @@ TIMER
 
 # Enable services
 systemctl enable btrfs-scrub.timer
-
-# Generate initramfs
-mkinitcpio -P
-EOF
-
-echo "Chroot setup completed successfully!"
-
-# Configure pacman
-sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
-sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
-
-# System update and base packages
-sudo pacman -Syu --noconfirm \
-    cachyos-rate-mirrors
-
-# Update Arch mirrors
-rate-mirrors arch
-sudo cachyos-rate-mirrors
-
-echo "Installing CachyOS repository..."
-# Install CachyOS repo
-cd /tmp
-curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xf cachyos-repo.tar.xz
-cd cachyos-repo
-chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh --remove
-
-echo "Installing (yay)..."
-# Yay installation
-cd /tmp
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd ..
-rm -rf yay
-
-echo "Updating system..."
-yay -Syu --noconfirm
-
-echo "Installing regular packages..."
-# Regular package installation
-yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight \
-    kdeconnect \
-    ufw \
-    docker
-
-echo "Installing packages with --nodeps flag..."
-# Packages with --nodeps
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
-echo "Installing GNOME environment..."
-# GNOME installation
-sudo pacman -S --needed --noconfirm \
-    gnome \
-    gnome-terminal \
-    cachyos-gnome-settings
-
-echo "Removing orphaned packages..."
-# Cleanup orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 echo "Enabling system services..."
 # Enable system services
