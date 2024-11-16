@@ -128,7 +128,7 @@ echo "Installing base system..."
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-arch-chroot /mnt /bin/bash <<EOF
+arch-chroot /mnt
 
 echo "Chroot setup starting"
 
@@ -150,7 +150,7 @@ echo "127.0.0.1 localhost" > /etc/hosts
 echo "::1       localhost" >> /etc/hosts
 echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
 
-# 4. User Management
+# User Management
 # Set root password
 echo "Setting root password..."
 echo "root:1991" | chpasswd
@@ -160,9 +160,9 @@ useradd -m -G wheel,video,input -s /bin/bash c0d3h01
 echo "c0d3h01:1991" | chpasswd
 
 # Configure sudo
-sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-# 5. Boot Configuration
+# Boot Configuration
 # Configure GRUB
 sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
 sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
@@ -170,11 +170,6 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-
-# 6. Additional Services
-# Git configuration
-su - c0d3h01 -c 'git config --global user.name "c0d3h01"'
-su - c0d3h01 -c 'git config --global user.email "harshalsawant2004h@gmail.com"'
 
 echo "Chroot setup completed successfully!"
 
@@ -189,7 +184,8 @@ curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xf ./cachyos-repo.tar.xz
 cd cachyos-repo
 chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh --remove
+./cachyos-repo.sh
+cd ..
 
 # System update and base packages
 sudo pacman -Syu --noconfirm
@@ -201,7 +197,6 @@ sudo cachyos-rate-mirrors
 
 echo "Installing (yay)..."
 # Yay installation
-cd /tmp
 git clone https://aur.archlinux.org/yay.git
 cd yay
 makepkg -si --noconfirm
@@ -446,10 +441,6 @@ fi
 # Android SDK setup for bashrc
 echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-
-# Docker post installation
-sudo usermod -aG docker $USER
-EOF
 
 umount -R /mnt
 
