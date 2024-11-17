@@ -315,7 +315,7 @@ WantedBy=timers.target
 TIMER
 
 # Enable services
-systemctl enable btrfs-scrub.timer
+sudo systemctl enable btrfs-scrub.timer
 
 echo "Enabling system services..."
 # Enable system services
