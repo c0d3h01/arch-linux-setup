@@ -190,16 +190,11 @@ curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xf ./cachyos-repo.tar.xz
 cd cachyos-repo
 chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh
+sudo ./cachyos-repo.sh --noconfirm
 cd ..
 
 # System update and base packages
 sudo pacman -Syu --noconfirm
-     cachyos-rate-mirrors
-     
-# Update Arch mirrors
-rate-mirrors arch
-sudo cachyos-rate-mirrors
 
 echo "Installing (yay)..."
 # Yay installation
