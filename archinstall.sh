@@ -453,18 +453,12 @@ set -e
 # Export terminal type
 export TERM=linux
 
-# Ensure /dev/pts is mounted
-mkdir -p /dev/pts
-mount -t devpts devpts /dev/pts
-
 # Change to user's home directory
 cd /home/c0d3h01 || exit 1
 
 # Execute user setup with proper environment
 TERM=linux sudo -u c0d3h01 bash -c 'cd /home/c0d3h01 && ./user-setup.sh'
 
-# Cleanup
-umount /dev/pts
 WRAPPER_EOF
 
 # Make the scripts executable
