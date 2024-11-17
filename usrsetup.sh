@@ -1,16 +1,19 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# Check if running as regular user
-if [ "$(id -u)" = "0" ]; then
-   echo "This script must be run as a regular user, not root" >&2
-   exit 1
-fi
-
 # Configure pacman  #
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
 sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
+
+echo "Installing CachyOS repository..."
+# Install CachyOS repo
+cd /tmp
+curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+tar xvf cachyos-repo.tar.xz
+cd cachyos-repo
+chmod +x ./cachyos-repo.sh
+sudo ./cachyos-repo.sh
 
 # System update and base packages
 sudo pacman -Syu --noconfirm \
@@ -20,20 +23,11 @@ sudo pacman -Syu --noconfirm \
 rate-mirrors arch
 sudo cachyos-rate-mirrors
 
-echo "Installing CachyOS repository..."
-# Install CachyOS repo
-cd /tmp
-curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xf cachyos-repo.tar.xz
-cd cachyos-repo
-chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh --remove
-
 echo "Installing (yay)..."
 # Yay installation
 cd /tmp
-git clone https://aur.archlinux.org/yay.git
-cd yay
+git clone https://aur.archlinux.org/yay-bin.git
+cd yay-bin
 makepkg -si --noconfirm
 cd ..
 rm -rf yay
@@ -121,9 +115,6 @@ fi
 # Android SDK setup for bashrc
 echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-
-# Docker post installation
-sudo usermod -aG docker $USER
 
 # Create necessary directories for Android development
 echo "Setting up Android development environment..."
