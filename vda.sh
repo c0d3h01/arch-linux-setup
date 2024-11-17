@@ -187,31 +187,13 @@ yay -Syu --noconfirm
 echo "Installing regular packages..."
 # Regular package installation
 yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight \
-    kdeconnect \
-    ufw \
-    docker
+    brave-bin 
 
 echo "Installing packages with --nodeps flag..."
 # Packages with --nodeps
 yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
+    telegram-desktop-bin 
+    
 echo "Installing GNOME environment..."
 # GNOME installation
 sudo pacman -S --needed --noconfirm \
