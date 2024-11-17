@@ -88,7 +88,7 @@ echo "Installing base system..."
         btrfs-progs \
         amd-ucode \
         xf86-video-amdgpu \
-        vulkan-radeon \
+        vulkan-radeon vulkan-tools \
         libva-mesa-driver \
         mesa-vdpau \
         mesa \
@@ -146,7 +146,7 @@ echo "Setting root password..."
 echo "root:1991" | chpasswd
 
 # Create user and set password
-useradd -m -G wheel,video,input -s /bin/bash c0d3h01
+useradd -m -G wheel,video,audio,plugdev,input -s /bin/bash c0d3h01
 echo "c0d3h01:1991" | chpasswd
 
 # Configure sudo
@@ -177,7 +177,6 @@ rm -rf cachyos-repo.tar.xz cachyos-repo
 # Configure pacman
 sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 sed -i 's/^#Color/Color/' /etc/pacman.conf
-sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
 # System update and base packages
 pacman -Syyu --noconfirm
@@ -240,25 +239,6 @@ priority = 32767
 fs-type = swap
 ZRAM
 
-cat > usr/lib/udev/rules.d/30-zram.rules <<'ZCONF'
-# Prefer to recompress only huge pages. This will result in additional memory
-# savings, but may slightly increase CPU load due to additional compression
-# overhead.
-ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
-  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
-
-TEST!="/dev/zram0", GOTO="zram_end"
-
-# Since ZRAM stores all pages in compressed form in RAM, we should prefer
-# preempting anonymous pages more than a page (file) cache.  Preempting file
-# pages may not be desirable because a process may want to access a file at any
-# time, whereas if it is preempted, it will cause an additional read cycle from
-# the disk.
-SYSCTL{vm.swappiness}="150"
-
-LABEL="zram_end"
-ZCONF
-
 cat > usr/lib/udev/rules.d/60-ioschedulers.rules <<'IOSHED'
 # NVMe SSD
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
@@ -317,42 +297,6 @@ kernel.kptr_restrict = 2
 
 # Disable Kexec, which allows replacing the current running kernel.
 kernel.kexec_load_disabled = 1
-
-# Increase the maximum connections
-# The upper limit on how many connections the kernel will accept (default 4096 since kernel version 5.6):
-net.core.somaxconn = 8192
-
-# Enable TCP Fast Open
-# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
-# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
-# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
-net.ipv4.tcp_fastopen = 3
-
-# Enable BBR3
-# The BBR3 congestion control algorithm can help achieve higher bandwidths and lower latencies for internet traffic
-net.ipv4.tcp_congestion_control = bbr
-
-# TCP SYN cookie protection
-# Helps protect against SYN flood attacks. Only kicks in when net.ipv4.tcp_max_syn_backlog is reached:
-net.ipv4.tcp_syncookies = 1
-
-# TCP Enable ECN Negotiation by default
-net.ipv4.tcp_ecn = 1
-
-# TCP Reduce performance spikes
-# Refer https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/reduce_tcp_performance_spikes
-net.ipv4.tcp_timestamps = 0
-
-# Increase netdev receive queue
-# May help prevent losing packets
-net.core.netdev_max_backlog = 16384
-
-# Disable TCP slow start after idle
-# Helps kill persistent single connection performance
-net.ipv4.tcp_slow_start_after_idle = 0
-
-# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
-net.ipv4.tcp_rfc1337 = 1
 
 # Set the maximum watches on files
 fs.inotify.max_user_watches = 524288
