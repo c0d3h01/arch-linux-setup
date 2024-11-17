@@ -485,10 +485,10 @@ chown 1000:1000 /mnt/home/c0d3h01/user-setup.sh
 
 # Execute the chroot scripts in sequence with proper logging
 echo "Entering chroot and executing setup..."
-sudo arch-chroot /mnt /chroot-setup.sh 2>&1 | tee /mnt/chroot-setup.log
+arch-chroot /mnt /chroot-setup.sh 2>&1 | tee /mnt/chroot-setup.log
 
 echo "Executing user setup in chroot..."
-sudo arch-chroot /mnt bash -c 'mount -t devpts devpts /dev/pts && /run-user-setup.sh' 2>&1 | tee /mnt/user-setup.log
+arch-chroot /mnt bash -c 'mount -t devpts devpts /dev/pts && /run-user-setup.sh' 2>&1 | tee /mnt/user-setup.log
 
 umount -R /mnt
 
