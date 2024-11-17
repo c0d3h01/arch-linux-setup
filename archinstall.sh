@@ -127,7 +127,7 @@ echo "Installing base system..."
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-cat > /mnt/chroot-setup.sh <<'CHROOT_EOF'
+arch-chroot /mnt /bin/bash <<'EOF'
 #!/bin/bash
 set -euxo pipefail
 echo "Chroot setup starting"
@@ -172,9 +172,7 @@ grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 sudo mkinitcpio -P
 echo "Chroot setup completed successfully!"
-CHROOT_EOF
 
-cat > /mnt/user-setup.sh <<'USER_EOF'
 #!/bin/bash
 set -euxo pipefail
 
@@ -350,7 +348,7 @@ sudo systemctl enable ufw
 
 echo "Disabling file indexing..."
 # Disable file indexing
-if command -v balooctl6 &> /dev/null; then
+if [command -v balooctl6] &> /dev/null; then
     sudo balooctl6 disable
     sudo balooctl6 purge
 fi
@@ -359,39 +357,7 @@ fi
 echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
 echo "User setup completed successfully!"
-USER_EOF
-
-# Create a wrapper script to run the user setup as c0d3h01
-cat > /mnt/run-user-setup.sh <<'WRAPPER_EOF'
-#!/bin/bash
-
-# Enable debug mode
-set -euxo pipefail
-
-# Change to user's home directory
-cd /home/c0d3h01 || exit 1
-
-# Execute user setup with root permissions
-./user-setup.sh
-WRAPPER_EOF
-
-# Make the scripts executable
-chmod +x /mnt/chroot-setup.sh
-chmod +x /mnt/run-user-setup.sh
-chmod +x /mnt/user-setup.sh
-
-# Create necessary directories and fix permissions
-mkdir -p /mnt/home/c0d3h01
-chown -R 1000:1000 /mnt/home/c0d3h01
-cp /mnt/user-setup.sh /mnt/home/c0d3h01/
-chown 1000:1000 /mnt/home/c0d3h01/user-setup.sh
-
-# Execute the chroot scripts in sequence with proper logging
-echo "Entering chroot and executing setup..."
-arch-chroot /mnt /chroot-setup.sh 2>&1 | tee /mnt/chroot-setup.log
-
-echo "Executing user setup in chroot..."
-arch-chroot /mnt bash -c 'mount -t devpts devpts /dev/pts && /run-user-setup.sh' 2>&1 | tee /mnt/user-setup.log
+EOF
 
 umount -R /mnt
 
