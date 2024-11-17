@@ -190,7 +190,7 @@ curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xf ./cachyos-repo.tar.xz
 cd cachyos-repo
 chmod +x ./cachyos-repo.sh
-./cachyos-repo.sh
+sudo ./cachyos-repo.sh
 cd ..
 
 # System update and base packages
