@@ -1,9 +1,10 @@
 #!/bin/bash
+set -e
 set -euxo pipefail
 
-DRIVE="/dev/vda"
-EFI_PART="${DRIVE}1"
-ROOT_PART="${DRIVE}2"
+DRIVE="/dev/nvme0n1"
+EFI_PART="${DRIVE}p1"
+ROOT_PART="${DRIVE}p2"
 
 echo "Starting Arch Linux installation..."
 
@@ -157,17 +158,16 @@ cd yay
 makepkg -si --noconfirm
 cd ..
 rm -rf yay
+YAYEOF
 
 echo "Installing regular packages..."
 yay -S --needed --noconfirm \
-    brave-bin \
-    ufw
+    brave-bin 
     
 echo "Installing packages with --nodeps flag..."
 yay -S --needed --noconfirm --nodeps \
     telegram-desktop-bin 
-YAYEOF
-
+    
 echo "Installing GNOME environment..."
 # GNOME installation
 pacman -Sy --needed --noconfirm \
