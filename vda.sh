@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+#set -e
 set -euxo pipefail
 exec 1> >(tee -a "./debug.logs")
 
