@@ -133,7 +133,6 @@ grub-mkconfig -o /boot/grub/grub.cfg
 echo "Chroot setup completed successfully!"
 
 echo "Installing CachyOS repo..."
-cd /tmp
 curl -LJO https://mirror.cachyos.org/cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
