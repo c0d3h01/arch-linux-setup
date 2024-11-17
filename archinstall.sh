@@ -175,12 +175,9 @@ grub-mkconfig -o /boot/grub/grub.cfg
 echo "Chroot setup completed successfully!"
 CHROOT_EOF
 
-# Make the chroot script executable
-chmod +x /mnt/chroot-setup.sh
-
-# Execute the chroot script
-echo "Entering chroot and executing setup..."
-arch-chroot /mnt /chroot-setup.sh
+cat > /mnt/user-setup.sh <<'USER_EOF'
+#!/bin/bash
+set -e
 
 # Configure pacman
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
@@ -450,6 +447,28 @@ fi
 # Android SDK setup for bashrc
 echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+echo "User setup completed successfully!"
+USER_EOF
+
+# Make the user setup script executable
+chmod +x /mnt/user-setup.sh
+
+# Create a wrapper script to run the user setup as c0d3h01
+cat > /mnt/run-user-setup.sh <<'WRAPPER_EOF'
+#!/bin/bash
+cd /home/c0d3h01
+sudo -u c0d3h01 /user-setup.sh
+WRAPPER_EOF
+
+# Make the chroot script executable
+chmod +x /mnt/chroot-setup.sh
+chmod +x /mnt/run-user-setup.sh
+
+# Execute the chroot scripts in sequence
+echo "Entering chroot and executing setup..."
+arch-chroot /mnt /chroot-setup.sh
+echo "Executing user setup in chroot..."
+arch-chroot /mnt /run-user-setup.sh
 
 umount -R /mnt
 
