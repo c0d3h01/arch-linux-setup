@@ -128,7 +128,7 @@ echo "Installing base system..."
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-arch-chroot /mnt
+arch-chroot /mnt /bin
 
 echo "Chroot setup starting"
 
@@ -143,12 +143,12 @@ locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
 # Set hostname
-echo "dell-inspiron" > /etc/hostname
+echo "archlinux" > /etc/hostname
 
 # Host configuration
 echo "127.0.0.1 localhost" > /etc/hosts
 echo "::1       localhost" >> /etc/hosts
-echo "127.0.1.1 dell-inspiron.localdomain dell-inspiron" >> /etc/hosts
+echo "127.0.1.1 archlinux.localdomain archlinux" >> /etc/hosts
 
 # User Management
 # Set root password
