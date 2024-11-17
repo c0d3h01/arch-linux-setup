@@ -79,43 +79,14 @@ df -Th
 btrfs subvolume list /mnt
 
 echo "Installing base system..."
-# Install base system and AMD-specific packages
-    pacstrap /mnt \
+pacstrap /mnt \
         base base-devel \
         linux linux-headers linux-firmware \
-        btrfs-progs \
-        amd-ucode \
-        xf86-video-amdgpu \
-        vulkan-radeon \
-        libva-mesa-driver \
-        mesa-vdpau \
-        mesa \
-        vulkan-icd-loader \
-        vulkan-tools \
-        libva-utils \
-        vdpauinfo \
-        radeontop \
         networkmanager \
         grub efibootmgr \
-        neovim glances git nano \
-        gcc gdb cmake make \
-        python python-pip \
-        nodejs npm \
-        git-lfs \
-        zram-generator \
-        power-profiles-daemon \
-        thermald \
-        bluez bluez-utils \
-        gamemode \
-        corectrl \
-        acpid \
-        lm_sensors \
-        nvme-cli \
-        powertop \
-        s-tui \
-        gstreamer-vaapi \
-        ffmpeg
-
+        neovim nano \
+        virtualbox-guest-utils \
+        
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
