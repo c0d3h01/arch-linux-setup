@@ -160,10 +160,13 @@ grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 echo "Chroot setup completed successfully!"
 
-curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+echo "Installing CachyOS repo..."
+cd /tmp
+curl -LJO https://mirror.cachyos.org/cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
- ./cachyos-repo.sh
+chmod +x cachyos-repo.sh
+./cachyos-repo.sh
 cd ..
 rm -rf cachyos-repo.tar.xz cachyos-repo
 
@@ -173,12 +176,11 @@ sed -i 's/^#Color/Color/' /etc/pacman.conf
 sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
 # System update and base packages
-pacman -Syu --noconfirm
+pacman -Syyu --noconfirm
 
 echo "Installing yay..."
 # Switch to regular user for yay installation
-cd /home/c0d3h01
-sudo -u c0d3h01 bash <<'YAYEOF'
+su - c0d3h01 <<'YAYEOF'
 git clone https://aur.archlinux.org/yay.git
 cd yay
 makepkg -si --noconfirm
@@ -186,7 +188,7 @@ cd ..
 rm -rf yay
 
 echo "Installing regular packages..."
-yay -Sy --needed --noconfirm \
+yay -S --needed --noconfirm \
     brave-bin \
     zoom \
     android-ndk \
@@ -203,7 +205,7 @@ yay -Sy --needed --noconfirm \
     docker
 
 echo "Installing packages with --nodeps flag..."
-yay -Sy --needed --noconfirm --nodeps \
+yay -S --needed --noconfirm --nodeps \
     telegram-desktop-bin \
     github-desktop-bin \
     visual-studio-code-bin \
