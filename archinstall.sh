@@ -120,10 +120,6 @@ echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
 arch-chroot /mnt /bin/bash <<'EOF'
-#!/bin/bash
-set -euxo pipefail
-echo "Chroot setup starting"
-
 # Basic System Configuration
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
@@ -162,7 +158,6 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-sudo mkinitcpio -P
 echo "Chroot setup completed successfully!"
 
 # Configure pacman
@@ -214,13 +209,13 @@ yay -Sy --needed --noconfirm --nodeps \
 
 echo "Installing GNOME environment..."
 # GNOME installation
-sudo pacman -Sy --needed --noconfirm \
+pacman -Sy --needed --noconfirm \
     gnome \
     gnome-terminal 
 
 echo "Removing orphaned packages..."
 # Cleanup orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
+pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
