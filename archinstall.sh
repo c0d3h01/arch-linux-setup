@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -e
+set -e
 set -euxo pipefail
 exec 1> >(tee -a "./debug.logs")
 
@@ -165,8 +165,7 @@ sleep 10
 echo "Chroot setup completed successfully!"
 
 echo "Installing CachyOS repo..."
-cd /tmp
-curl -LJO https://mirror.cachyos.org/cachyos-repo.tar.xz
+curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
 chmod +x cachyos-repo.sh
