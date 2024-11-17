@@ -1,5 +1,7 @@
 #!/bin/bash
+set -e
 set -euxo pipefail
+exec 1> >(tee -a "./debug.logs")
 
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
@@ -97,7 +99,7 @@ echo "Installing base system..."
         radeontop \
         networkmanager \
         grub efibootmgr \
-        neovim glances git nano \
+        neovim glances git nano sudo \
         gcc gdb cmake make \
         python python-pip \
         nodejs npm \
@@ -186,6 +188,7 @@ cd yay
 makepkg -si --noconfirm
 cd ..
 rm -rf yay
+YAYEOF
 
 echo "Installing regular packages..."
 yay -S --needed --noconfirm \
@@ -212,7 +215,6 @@ yay -S --needed --noconfirm --nodeps \
     ferdium-bin \
     vesktop-bin \
     onlyoffice-bin
-YAYEOF
 
 echo "Installing GNOME environment..."
 # GNOME installation
