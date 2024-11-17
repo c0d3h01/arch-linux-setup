@@ -131,6 +131,13 @@ grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 echo "Chroot setup completed successfully!"
 
+curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+tar xvf cachyos-repo.tar.xz
+cd cachyos-repo
+ ./cachyos-repo.sh
+cd ..
+rm -rf cachyos-repo.tar.xz cachyos-repo
+
 # Configure pacman
 sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -139,33 +146,30 @@ sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 # System update and base packages
 pacman -Syu --noconfirm
 
-echo "Installing (yay)..."
-# Yay installation
+echo "Installing yay..."
+# Switch to regular user for yay installation
+cd /home/c0d3h01
+sudo -u c0d3h01 bash <<'YAYEOF'
 git clone https://aur.archlinux.org/yay.git
 cd yay
 makepkg -si --noconfirm
 cd ..
 rm -rf yay
 
-echo "Updating system..."
-yay -Syu --noconfirm
-
 echo "Installing regular packages..."
-# Regular package installation
 yay -Sy --needed --noconfirm \
-    brave-bin \
-    ufw
-
+    brave-bin 
+    
 echo "Installing packages with --nodeps flag..."
-# Packages with --nodeps
 yay -Sy --needed --noconfirm --nodeps \
     telegram-desktop-bin 
-    
+YAYEOF
+
 echo "Installing GNOME environment..."
 # GNOME installation
 pacman -Sy --needed --noconfirm \
     gnome \
-    gnome-terminal 
+    gnome-terminal
 
 echo "Removing orphaned packages..."
 # Cleanup orphaned packages
