@@ -2,9 +2,9 @@
 set -e
 set -euxo pipefail
 
-DRIVE="/dev/nvme0n1"
-EFI_PART="${DRIVE}p1"
-ROOT_PART="${DRIVE}p2"
+DRIVE="/dev/vda"
+EFI_PART="${DRIVE}1"
+ROOT_PART="${DRIVE}2"
 
 echo "Starting Arch Linux installation..."
 
