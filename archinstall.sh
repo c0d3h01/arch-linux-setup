@@ -466,9 +466,9 @@ chmod +x /mnt/run-user-setup.sh
 
 # Execute the chroot scripts in sequence
 echo "Entering chroot and executing setup..."
-arch-chroot /mnt /chroot-setup.sh
+sudo arch-chroot /mnt /chroot-setup.sh
 echo "Executing user setup in chroot..."
-arch-chroot /mnt /run-user-setup.sh
+sudo arch-chroot /mnt /run-user-setup.sh
 
 umount -R /mnt
 
