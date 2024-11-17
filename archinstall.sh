@@ -183,15 +183,6 @@ sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
 sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
-echo "Installing CachyOS repository..."
-# Install CachyOS repo
-curl -L https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xf ./cachyos-repo.tar.xz
-cd cachyos-repo
-chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh --noconfirm
-cd ..
-
 # System update and base packages
 sudo pacman -Syu --noconfirm
 
@@ -238,8 +229,7 @@ echo "Installing GNOME environment..."
 # GNOME installation
 sudo pacman -S --needed --noconfirm \
     gnome \
-    gnome-terminal \
-    cachyos-gnome-settings
+    gnome-terminal 
 
 echo "Removing orphaned packages..."
 # Cleanup orphaned packages
