@@ -170,7 +170,7 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-
+sudo mkinitcpio -P
 echo "Chroot setup completed successfully!"
 CHROOT_EOF
 
@@ -237,7 +237,7 @@ sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
-cat > /etc/systemd/zram-generator.conf <<'ZRAM'
+sudo cat > /etc/systemd/zram-generator.conf <<'ZRAM'
 [zram0]
 zram-size = 8192
 compression-algorithm = zstd
@@ -248,7 +248,7 @@ fs-type = swap
 ZRAM
 
 # System tuning parameters
-cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
+sudo cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
 vm.swappiness = 100
 vm.vfs_cache_pressure = 50
 vm.dirty_bytes = 268435456
@@ -282,20 +282,20 @@ SYSCTL
 
 # AMD-specific Configuration
 # GPU settings
-cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
+sudo cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
 options amdgpu ppfeaturemask=0xffffffff
 options amdgpu dpm=1
 options amdgpu audio=1
 AMD
 
 # Power management
-cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
+sudo cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
 ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="auto"
 POWER
 
 # BTRFS configuration
-cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
+sudo cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
 [Unit]
 Description=BTRFS periodic scrub
 After=local-fs.target
@@ -304,7 +304,7 @@ Type=oneshot
 ExecStart=/usr/bin/btrfs scrub start -B /
 SCRUB
 
-cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
+sudo cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
 [Unit]
 Description=BTRFS periodic scrub timer
 [Timer]
