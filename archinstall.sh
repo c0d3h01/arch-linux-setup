@@ -450,25 +450,45 @@ echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.
 echo "User setup completed successfully!"
 USER_EOF
 
-# Make the user setup script executable
-chmod +x /mnt/user-setup.sh
-
 # Create a wrapper script to run the user setup as c0d3h01
 cat > /mnt/run-user-setup.sh <<'WRAPPER_EOF'
 #!/bin/bash
-cd /home/c0d3h01
-sudo -u c0d3h01 /user-setup.sh
+set -e
+
+# Export terminal type
+export TERM=linux
+
+# Ensure /dev/pts is mounted
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts
+
+# Change to user's home directory
+cd /home/c0d3h01 || exit 1
+
+# Execute user setup with proper environment
+TERM=linux sudo -u c0d3h01 bash -c 'cd /home/c0d3h01 && ./user-setup.sh'
+
+# Cleanup
+umount /dev/pts
 WRAPPER_EOF
 
-# Make the chroot script executable
+# Make the scripts executable
 chmod +x /mnt/chroot-setup.sh
 chmod +x /mnt/run-user-setup.sh
+chmod +x /mnt/user-setup.sh
 
-# Execute the chroot scripts in sequence
+# Create necessary directories and fix permissions
+mkdir -p /mnt/home/c0d3h01
+chown -R 1000:1000 /mnt/home/c0d3h01
+cp /mnt/user-setup.sh /mnt/home/c0d3h01/
+chown 1000:1000 /mnt/home/c0d3h01/user-setup.sh
+
+# Execute the chroot scripts in sequence with proper logging
 echo "Entering chroot and executing setup..."
-sudo arch-chroot /mnt /chroot-setup.sh
+sudo arch-chroot /mnt /chroot-setup.sh 2>&1 | tee /mnt/chroot-setup.log
+
 echo "Executing user setup in chroot..."
-sudo arch-chroot /mnt /run-user-setup.sh
+sudo arch-chroot /mnt bash -c 'mount -t devpts devpts /dev/pts && /run-user-setup.sh' 2>&1 | tee /mnt/user-setup.log
 
 umount -R /mnt
 
