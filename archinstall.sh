@@ -368,16 +368,11 @@ cat > /mnt/run-user-setup.sh <<'WRAPPER_EOF'
 # Enable debug mode
 set -euxo pipefail
 
-# Export terminal type
-export TERM=linux
-
 # Change to user's home directory
 cd /home/c0d3h01 || exit 1
 
-# Execute user setup with proper environment
-TERM=linux
-sudo -u c0d3h01 bash -c 'cd /home/c0d3h01 && ./user-setup.sh'
-
+# Execute user setup with root permissions
+./user-setup.sh
 WRAPPER_EOF
 
 # Make the scripts executable
