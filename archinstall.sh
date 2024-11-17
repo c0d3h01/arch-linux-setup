@@ -5,13 +5,6 @@ DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
 ROOT_PART="${DRIVE}p2"
 
-# Function to handle errors
-error_handler() {
-    echo "An error occurred on line $1"
-    exit 1
-}
-trap 'error_handler ${LINENO}' ERR
-
 echo "Starting Arch Linux installation..."
 
 echo "Preparing disk partitions..."
@@ -74,7 +67,6 @@ mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
 
 # Mount other subvolumes
 mount -o ${MOUNT_OPTS},subvol=@home ${ROOT_PART} /mnt/home
-#mount -o ${MOUNT_OPTS},subvol=@var ${ROOT_PART} /mnt/var
 mount -o ${MOUNT_OPTS},subvol=@log ${ROOT_PART} /mnt/var/log
 mount -o ${MOUNT_OPTS},subvol=@pkg ${ROOT_PART} /mnt/var/cache/pacman/pkg
 mount -o ${MOUNT_OPTS},subvol=@.snapshots ${ROOT_PART} /mnt/.snapshots
@@ -105,7 +97,7 @@ echo "Installing base system..."
         radeontop \
         networkmanager \
         grub efibootmgr \
-        neovim glances git \
+        neovim glances git nano \
         gcc gdb cmake make \
         python python-pip \
         nodejs npm \
@@ -172,9 +164,6 @@ grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 sudo mkinitcpio -P
 echo "Chroot setup completed successfully!"
-
-#!/bin/bash
-set -euxo pipefail
 
 # Configure pacman
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
