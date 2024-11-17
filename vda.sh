@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 set -euxo pipefail
+exec 1> >(tee -a "./debug.logs")
 
 DRIVE="/dev/vda"
 EFI_PART="${DRIVE}1"
@@ -130,6 +131,8 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
+mkinitcpio -P
+sleep 10
 echo "Chroot setup completed successfully!"
 
 echo "Installing CachyOS repo..."
