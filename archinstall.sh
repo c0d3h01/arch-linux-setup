@@ -128,8 +128,9 @@ echo "Installing base system..."
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-arch-chroot /mnt /bin
-
+cat > /mnt/chroot-setup.sh <<'CHROOT_EOF'
+#!/bin/bash
+set -e
 echo "Chroot setup starting"
 
 # Basic System Configuration
@@ -172,6 +173,14 @@ grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "Chroot setup completed successfully!"
+CHROOT_EOF
+
+# Make the chroot script executable
+chmod +x /mnt/chroot-setup.sh
+
+# Execute the chroot script
+echo "Entering chroot and executing setup..."
+arch-chroot /mnt /chroot-setup.sh
 
 # Configure pacman
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
