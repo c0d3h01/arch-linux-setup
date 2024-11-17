@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
 
-DRIVE="/dev/vda"
-EFI_PART="${DRIVE}1"
-ROOT_PART="${DRIVE}2"
+DRIVE="/dev/nvme0n1"
+EFI_PART="${DRIVE}p1"
+ROOT_PART="${DRIVE}p2"
 
 echo "Starting Arch Linux installation..."
 
@@ -86,15 +86,11 @@ pacstrap /mnt \
         grub efibootmgr \
         neovim nano \
         virtualbox-guest-utils
-
+        
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
 arch-chroot /mnt /bin/bash <<'EOF'
-#!/bin/bash
-set -euxo pipefail
-echo "Chroot setup starting"
-
 # Basic System Configuration
 # Set timezone
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
@@ -133,16 +129,15 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-sudo mkinitcpio -P
 echo "Chroot setup completed successfully!"
 
 # Configure pacman
-sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
-sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
+sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+sed -i 's/^#Color/Color/' /etc/pacman.conf
+sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
 # System update and base packages
-sudo pacman -Syu --noconfirm
+pacman -Syu --noconfirm
 
 echo "Installing (yay)..."
 # Yay installation
@@ -157,27 +152,27 @@ yay -Syu --noconfirm
 
 echo "Installing regular packages..."
 # Regular package installation
-yay -S --needed --noconfirm \
+yay -Sy --needed --noconfirm \
     brave-bin 
-
+    
 echo "Installing packages with --nodeps flag..."
 # Packages with --nodeps
-yay -S --needed --noconfirm --nodeps \
+yay -Sy --needed --noconfirm --nodeps \
     telegram-desktop-bin 
     
 echo "Installing GNOME environment..."
 # GNOME installation
-sudo pacman -S --needed --noconfirm \
+pacman -Sy --needed --noconfirm \
     gnome \
     gnome-terminal 
 
 echo "Removing orphaned packages..."
 # Cleanup orphaned packages
-sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
+pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
-sudo cat > /etc/systemd/zram-generator.conf <<'ZRAM'
+cat > /etc/systemd/zram-generator.conf <<'ZRAM'
 [zram0]
 zram-size = 8192
 compression-algorithm = zstd
@@ -188,7 +183,7 @@ fs-type = swap
 ZRAM
 
 # System tuning parameters
-sudo cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
+cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
 vm.swappiness = 100
 vm.vfs_cache_pressure = 50
 vm.dirty_bytes = 268435456
@@ -222,20 +217,20 @@ SYSCTL
 
 # AMD-specific Configuration
 # GPU settings
-sudo cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
+cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
 options amdgpu ppfeaturemask=0xffffffff
 options amdgpu dpm=1
 options amdgpu audio=1
 AMD
 
 # Power management
-sudo cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
+cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
 ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="auto"
 POWER
 
 # BTRFS configuration
-sudo cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
+cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
 [Unit]
 Description=BTRFS periodic scrub
 After=local-fs.target
@@ -244,7 +239,7 @@ Type=oneshot
 ExecStart=/usr/bin/btrfs scrub start -B /
 SCRUB
 
-sudo cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
+cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
 [Unit]
 Description=BTRFS periodic scrub timer
 [Timer]
@@ -253,9 +248,6 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 TIMER
-
-# Enable services
-sudo systemctl enable btrfs-scrub.timer
 
 echo "Enabling system services..."
 # Enable system services
@@ -268,31 +260,32 @@ SERVICES=(
     "docker"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
+    "btrfs-scrub.timer"
 )
 
 for service in "${SERVICES[@]}"; do
-    sudo systemctl enable "$service"
+    systemctl enable "$service"
 done
 
 echo "Configuring firewall..."
 # Configure UFW
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow ssh
-sudo ufw allow http
-sudo ufw allow https
+ ufw default deny incoming
+ ufw default allow outgoing
+ ufw allow ssh
+ ufw allow http
+ ufw allow https
 # KDE Connect ports
-sudo ufw allow 1714:1764/udp
-sudo ufw allow 1714:1764/tcp
-sudo ufw logging on
-sudo ufw enable
-sudo systemctl enable ufw
+ ufw allow 1714:1764/udp
+ ufw allow 1714:1764/tcp
+ ufw logging on
+ ufw enable
+ systemctl enable ufw
 
 echo "Disabling file indexing..."
 # Disable file indexing
 if [command -v balooctl6] &> /dev/null; then
-    sudo balooctl6 disable
-    sudo balooctl6 purge
+     balooctl6 disable
+     balooctl6 purge
 fi
 
 # Android SDK setup for bashrc
