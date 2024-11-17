@@ -1,6 +1,5 @@
 #!/bin/bash
-set -e  # Exit on error
-exec > >(tee -a script_debug.log) 2>&1
+set -euxo pipefail
 
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
@@ -130,7 +129,7 @@ genfstab -U /mnt >> /mnt/etc/fstab
 
 cat > /mnt/chroot-setup.sh <<'CHROOT_EOF'
 #!/bin/bash
-set -e
+set -euxo pipefail
 echo "Chroot setup starting"
 
 # Basic System Configuration
@@ -177,7 +176,7 @@ CHROOT_EOF
 
 cat > /mnt/user-setup.sh <<'USER_EOF'
 #!/bin/bash
-set -e
+set -euxo pipefail
 
 # Configure pacman
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
@@ -448,7 +447,9 @@ USER_EOF
 # Create a wrapper script to run the user setup as c0d3h01
 cat > /mnt/run-user-setup.sh <<'WRAPPER_EOF'
 #!/bin/bash
-set -e
+
+# Enable debug mode
+set -euxo pipefail
 
 # Export terminal type
 export TERM=linux
@@ -457,7 +458,8 @@ export TERM=linux
 cd /home/c0d3h01 || exit 1
 
 # Execute user setup with proper environment
-TERM=linux sudo -u c0d3h01 bash -c 'cd /home/c0d3h01 && ./user-setup.sh'
+TERM=linux
+sudo -u c0d3h01 bash -c 'cd /home/c0d3h01 && ./user-setup.sh'
 
 WRAPPER_EOF
 
