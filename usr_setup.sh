@@ -4,7 +4,6 @@ set -eu
 # Configure pacman  #
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 sudo sed -i 's/^#Color/Color/' /etc/pacman.conf
-sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
 echo "Installing CachyOS repository..."
 # Install CachyOS repo
