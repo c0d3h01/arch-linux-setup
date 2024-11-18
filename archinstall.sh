@@ -164,67 +164,11 @@ mkinitcpio -P
 sleep 10
 echo "Chroot setup completed successfully!"
 
-echo "Installing CachyOS repo..."
-curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xvf cachyos-repo.tar.xz
-cd cachyos-repo
-chmod +x cachyos-repo.sh
-./cachyos-repo.sh
-cd ..
-rm -rf cachyos-repo.tar.xz cachyos-repo
-
-# Configure pacman
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-sed -i 's/^#Color/Color/' /etc/pacman.conf
-
-# System update and base packages
-pacman -Syyu --noconfirm
-
-echo "Installing yay..."
-# Switch to regular user for yay installation
-su - c0d3h01 <<'YAYEOF'
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd ..
-rm -rf yay
-YAYEOF
-
-echo "Installing regular packages..."
-yay -S --needed --noconfirm \
-    brave-bin \
-    zoom \
-    android-ndk \
-    android-sdk \
-    openjdk-src \
-    postman-bin \
-    youtube-music-bin \
-    notion-app-electron \
-    zed \
-    gparted \
-    filelight \
-    kdeconnect \
-    ufw \
-    docker
-
-echo "Installing packages with --nodeps flag..."
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin \
-    github-desktop-bin \
-    visual-studio-code-bin \
-    ferdium-bin \
-    vesktop-bin \
-    onlyoffice-bin
-
 echo "Installing GNOME environment..."
 # GNOME installation
 pacman -Sy --needed --noconfirm \
     gnome \
     gnome-terminal
-
-echo "Removing orphaned packages..."
-# Cleanup orphaned packages
-pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
@@ -356,7 +300,6 @@ SERVICES=(
     "NetworkManager"
     "bluetooth"
     "gdm"
-    "docker"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
     "btrfs-scrub.timer"
@@ -366,20 +309,6 @@ for service in "${SERVICES[@]}"; do
     systemctl enable "$service"
 done
 
-echo "Configuring firewall..."
-# Configure UFW
- ufw default deny incoming
- ufw default allow outgoing
- ufw allow ssh
- ufw allow http
- ufw allow https
-# KDE Connect ports
- ufw allow 1714:1764/udp
- ufw allow 1714:1764/tcp
- ufw logging on
- ufw enable
- systemctl enable ufw
-
 echo "Disabling file indexing..."
 # Disable file indexing
 if [command -v balooctl6] &> /dev/null; then
@@ -387,10 +316,6 @@ if [command -v balooctl6] &> /dev/null; then
      balooctl6 purge
 fi
 
-# Android SDK setup for bashrc
-echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
-echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-echo "User setup completed successfully!"
 EOF
 
 umount -R /mnt
