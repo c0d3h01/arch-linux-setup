@@ -1,6 +1,5 @@
-#!/bin/bash
-set -e
-set -euxo pipefail
+#!/usr/bin/env bash
+set -eu
 exec 1> >(tee -a "./debug.logs")
 
 DRIVE="/dev/nvme0n1"
