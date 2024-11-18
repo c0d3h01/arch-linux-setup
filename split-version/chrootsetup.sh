@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e  # Exit on error
+#!/usr/bin/env bash
+set -eu
 
 # System check before proceeding
 if [ "$(id -u)" != "0" ]; then
