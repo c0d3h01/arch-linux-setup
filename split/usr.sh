@@ -1,5 +1,6 @@
-#!/bin/bash
-set -e  # Exit on error
+#!/usr/bin/env bash
+set -eu
+exec 1> >(tee -a "./usr_setup.log")
 
 # Configure pacman  #
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
