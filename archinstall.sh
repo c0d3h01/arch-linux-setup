@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eu
-exec 1> >(tee -a "./debug.logs")
+exec 1> >(tee -a "./archinstall.log")
 
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
@@ -142,11 +142,11 @@ echo "127.0.1.1 archlinux.localdomain archlinux" >> /etc/hosts
 # User Management
 # Set root password
 echo "Setting root password..."
-echo "root:1991" | chpasswd
+echo "root:hell" | chpasswd
 
 # Create user and set password
 useradd -m -G wheel -s /bin/bash c0d3h01
-echo "c0d3h01:1991" | chpasswd
+echo "c0d3h01:hell" | chpasswd
 
 # Configure sudo
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -160,7 +160,6 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
-sleep 10
 echo "Chroot setup completed successfully!"
 
 echo "Installing GNOME environment..."
@@ -192,7 +191,7 @@ cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 # A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
 # and a value of 100 means IO cost is assumed to be equal.
-vm.swappiness = 100
+vm.swappiness = 10
 
 # The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
 # Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
