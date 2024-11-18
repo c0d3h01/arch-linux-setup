@@ -1,9 +1,6 @@
-#!/bash/bin
-
-set -e
-set -euxo pipefail
-
-exec 1> >(tee -a "./debug.logs")
+#!/usr/bin/env bash
+set -eu
+exec 1> >(tee -a "./autometed.log")
 
 # variables.
 DRIVE="/dev/nvme0n1"
