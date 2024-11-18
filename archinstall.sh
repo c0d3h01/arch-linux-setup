@@ -146,7 +146,7 @@ echo "Setting root password..."
 echo "root:1991" | chpasswd
 
 # Create user and set password
-useradd -m -G wheel,video,audio,plugdev,input -s /bin/bash c0d3h01
+useradd -m -G wheel -s /bin/bash c0d3h01
 echo "c0d3h01:1991" | chpasswd
 
 # Configure sudo
