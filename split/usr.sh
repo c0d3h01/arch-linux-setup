@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -eu
-exec 1> >(tee -a "./usr_setup.log")
 
 # Configure pacman  #
 sudo sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
@@ -9,7 +8,6 @@ sudo sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
 
 echo "Installing CachyOS repository..."
 # Install CachyOS repo
-cd /tmp
 curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
@@ -26,7 +24,6 @@ sudo cachyos-rate-mirrors
 
 echo "Installing (yay)..."
 # Yay installation
-cd /tmp
 git clone https://aur.archlinux.org/yay-bin.git
 cd yay-bin
 makepkg -si --noconfirm
