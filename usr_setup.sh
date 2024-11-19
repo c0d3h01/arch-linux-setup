@@ -14,7 +14,7 @@ curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
 tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
 chmod +x ./cachyos-repo.sh
-sudo ./cachyos-repo.sh
+sudo ./cachyos-repo.sh --needed --noconfirm
 
 # System update and base packages & VM install.
 sudo pacman -Sy --needed --noconfirm \
@@ -27,7 +27,8 @@ sudo pacman -Sy --needed --noconfirm \
     vde2 \
     bridge-utils \
     iptables-nft \
-    dmidecode
+    dmidecode \
+    xclip
 
 # Update Arch mirrors
 rate-mirrors arch
@@ -37,7 +38,7 @@ echo "Installing (yay)..."
 # Yay installation
 git clone https://aur.archlinux.org/yay-bin.git
 cd yay-bin
-makepkg -si --noconfirm
+makepkg -si --needed --noconfirm
 cd ..
 rm -rf yay
 
@@ -91,6 +92,7 @@ SERVICES=(
     "docker"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
+    "ufw"
     "libvirtd.service" # VM service
 )
 
@@ -100,6 +102,7 @@ done
 
 echo "Configuring firewall..."
 # Configure UFW
+sudo ufw enable
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow ssh
@@ -109,8 +112,6 @@ sudo ufw allow https
 sudo ufw allow 1714:1764/udp
 sudo ufw allow 1714:1764/tcp
 sudo ufw logging on
-sudo ufw enable
-sudo systemctl enable ufw
 
 echo "Disabling file indexing..."
 # Disable file indexing
