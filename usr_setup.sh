@@ -19,6 +19,8 @@ sudo ./cachyos-repo.sh --needed --noconfirm
 # System update and base packages & VM install.
 sudo pacman -Sy --needed --noconfirm \
     cachyos-rate-mirrors \
+    nodejs npm \
+    fish \
     virt-manager \
     qemu-desktop \
     libvirt \
