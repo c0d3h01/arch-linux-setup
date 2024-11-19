@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -eu
-#exec 1> >(tee -a "./archinstall.log")
 
 DRIVE="/dev/nvme0n1"
 EFI_PART="${DRIVE}p1"
