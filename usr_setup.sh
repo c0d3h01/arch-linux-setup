@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+#shellcheck disable=SC2046
+
 set -eu
 
 # Configure pacman  #
@@ -117,7 +120,7 @@ if command -v balooctl6 &> /dev/null; then
 fi
 
 # Android SDK setup for bashrc
-echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
-echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+echo "export ANDROID_HOME=$HOME/Android/Sdk" >> ~/.bashrc
+echo "export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools" >> ~/.bashrc
 
 echo "Installation completed successfully!"
