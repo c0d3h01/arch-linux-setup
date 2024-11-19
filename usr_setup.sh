@@ -60,7 +60,8 @@ yay -S --needed --noconfirm \
     filelight \
     kdeconnect \
     ufw \
-    docker
+    docker \
+    tor
 
 echo "Installing packages with --nodeps flag..."
 # Packages with --nodeps
