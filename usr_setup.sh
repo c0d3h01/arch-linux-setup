@@ -88,6 +88,7 @@ SERVICES=(
     "docker"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
+    "libvirtd.service" # VM service
 )
 
 for service in "${SERVICES[@]}"; do
@@ -118,9 +119,5 @@ fi
 # Android SDK setup for bashrc
 echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-
-# Create necessary directories for Android development
-echo "Setting up Android development environment..."
-mkdir -p ~/Android/Sdk
 
 echo "Installation completed successfully!"
