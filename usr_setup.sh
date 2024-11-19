@@ -61,7 +61,7 @@ yay -S --needed --noconfirm \
     kdeconnect \
     ufw \
     docker \
-    tor
+    tor-browser-bin
 
 echo "Installing packages with --nodeps flag..."
 # Packages with --nodeps
