@@ -161,12 +161,6 @@ grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
 echo "Chroot setup completed successfully!"
 
-echo "Installing GNOME environment..."
-# GNOME installation
-pacman -Sy --needed --noconfirm \
-    gnome \
-    gnome-terminal
-
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
 cat > /etc/systemd/zram-generator.conf <<'ZRAM'
@@ -296,7 +290,6 @@ SERVICES=(
     "power-profiles-daemon"
     "NetworkManager"
     "bluetooth"
-    "gdm"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
     "btrfs-scrub.timer"
