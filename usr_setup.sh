@@ -79,6 +79,12 @@ sudo pacman -S --needed --noconfirm \
     gnome-terminal \
     cachyos-gnome-settings
 
+echo "Installing CPU auto-freq.git"
+git clone https://github.com/AdnanHodzic/auto-cpufreq.git
+cd auto-cpufreq && sudo ./auto-cpufreq-installer
+cd ..
+rm -rf ./auto-cpufreq
+
 echo "Removing orphaned packages..."
 # Cleanup orphaned packages
 sudo pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
