@@ -13,9 +13,18 @@ cd cachyos-repo
 chmod +x ./cachyos-repo.sh
 sudo ./cachyos-repo.sh
 
-# System update and base packages
-sudo pacman -Syu --noconfirm \
-    cachyos-rate-mirrors
+# System update and base packages & VM install.
+sudo pacman -Sy --needed --noconfirm \
+    cachyos-rate-mirrors \
+    virt-manager \
+    qemu-desktop \
+    libvirt \
+    edk2-ovmf \
+    dnsmasq \
+    vde2 \
+    bridge-utils \
+    iptables-nft \
+    dmidecode
 
 # Update Arch mirrors
 rate-mirrors arch
@@ -28,9 +37,6 @@ cd yay-bin
 makepkg -si --noconfirm
 cd ..
 rm -rf yay
-
-echo "Updating system..."
-yay -Syu --noconfirm
 
 echo "Installing regular packages..."
 # Regular package installation
