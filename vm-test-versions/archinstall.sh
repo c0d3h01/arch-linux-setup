@@ -1,11 +1,9 @@
-#!/bin/bash
-#set -e
-set -euxo pipefail
-exec 1> >(tee -a "./debug.logs")
+#!/usr/bin/env bash
+set -eu
 
 DRIVE="/dev/vda"
 EFI_PART="${DRIVE}1"
-ROOT_PART="${DRIVE}2"
+ROOT_PART="${DRIVE}p"
 
 echo "Starting Arch Linux installation..."
 
@@ -81,13 +79,42 @@ df -Th
 btrfs subvolume list /mnt
 
 echo "Installing base system..."
-pacstrap /mnt \
+# Install base system and AMD-specific packages
+    pacstrap /mnt \
         base base-devel \
         linux linux-headers linux-firmware \
+        btrfs-progs \
+        amd-ucode \
+        xf86-video-amdgpu \
+        vulkan-radeon vulkan-tools \
+        libva-mesa-driver \
+        mesa-vdpau \
+        mesa \
+        vulkan-icd-loader \
+        vulkan-tools \
+        libva-utils \
+        vdpauinfo \
+        radeontop \
         networkmanager \
         grub efibootmgr \
-        neovim nano \
-        virtualbox-guest-utils
+        neovim glances git nano sudo \
+        gcc gdb cmake make \
+        python python-pip \
+        nodejs npm \
+        git-lfs \
+        zram-generator \
+        power-profiles-daemon \
+        thermald \
+        bluez bluez-utils \
+        gamemode \
+        corectrl \
+        acpid \
+        lm_sensors \
+        nvme-cli \
+        powertop \
+        s-tui \
+        gstreamer-vaapi \
+        ffmpeg
         
 echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -114,11 +141,11 @@ echo "127.0.1.1 archlinux.localdomain archlinux" >> /etc/hosts
 # User Management
 # Set root password
 echo "Setting root password..."
-echo "root:1991" | chpasswd
+echo "root:hell" | chpasswd
 
 # Create user and set password
-useradd -m -G wheel,video,input -s /bin/bash c0d3h01
-echo "c0d3h01:1991" | chpasswd
+useradd -m -G wheel -s /bin/bash c0d3h01
+echo "c0d3h01:hell" | chpasswd
 
 # Configure sudo
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -132,53 +159,7 @@ sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
-sleep 10
 echo "Chroot setup completed successfully!"
-
-echo "Installing CachyOS repo..."
-curl -LJO https://mirror.cachyos.org/cachyos-repo.tar.xz
-tar xvf cachyos-repo.tar.xz
-cd cachyos-repo
-chmod +x cachyos-repo.sh
-./cachyos-repo.sh
-cd ..
-rm -rf cachyos-repo.tar.xz cachyos-repo
-
-# Configure pacman
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-sed -i 's/^#Color/Color/' /etc/pacman.conf
-sed -i '/\[options\]/a ILoveCandy' /etc/pacman.conf
-
-# System update and base packages
-pacman -Syyu --noconfirm
-
-echo "Installing yay..."
-# Switch to regular user for yay installation
-su - c0d3h01 <<'YAYEOF'
-git clone https://aur.archlinux.org/yay.git
-cd yay
-makepkg -si --noconfirm
-cd ..
-rm -rf yay
-YAYEOF
-
-echo "Installing regular packages..."
-yay -S --needed --noconfirm \
-    brave-bin 
-    
-echo "Installing packages with --nodeps flag..."
-yay -S --needed --noconfirm --nodeps \
-    telegram-desktop-bin 
-    
-echo "Installing GNOME environment..."
-# GNOME installation
-pacman -Sy --needed --noconfirm \
-    gnome \
-    gnome-terminal
-
-echo "Removing orphaned packages..."
-# Cleanup orphaned packages
-pacman -Rns $(pacman -Qtdq) --noconfirm 2>/dev/null || true
 
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
@@ -192,25 +173,6 @@ priority = 32767
 fs-type = swap
 ZRAM
 
-cat > usr/lib/udev/rules.d/30-zram.rules <<'ZCONF'
-# Prefer to recompress only huge pages. This will result in additional memory
-# savings, but may slightly increase CPU load due to additional compression
-# overhead.
-ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
-  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
-
-TEST!="/dev/zram0", GOTO="zram_end"
-
-# Since ZRAM stores all pages in compressed form in RAM, we should prefer
-# preempting anonymous pages more than a page (file) cache.  Preempting file
-# pages may not be desirable because a process may want to access a file at any
-# time, whereas if it is preempted, it will cause an additional read cycle from
-# the disk.
-SYSCTL{vm.swappiness}="150"
-
-LABEL="zram_end"
-ZCONF
-
 cat > usr/lib/udev/rules.d/60-ioschedulers.rules <<'IOSHED'
 # NVMe SSD
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
@@ -222,7 +184,7 @@ cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 # A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
 # and a value of 100 means IO cost is assumed to be equal.
-vm.swappiness = 100
+vm.swappiness = 10
 
 # The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
 # Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
@@ -269,42 +231,6 @@ kernel.kptr_restrict = 2
 
 # Disable Kexec, which allows replacing the current running kernel.
 kernel.kexec_load_disabled = 1
-
-# Increase the maximum connections
-# The upper limit on how many connections the kernel will accept (default 4096 since kernel version 5.6):
-net.core.somaxconn = 8192
-
-# Enable TCP Fast Open
-# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
-# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
-# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
-net.ipv4.tcp_fastopen = 3
-
-# Enable BBR3
-# The BBR3 congestion control algorithm can help achieve higher bandwidths and lower latencies for internet traffic
-net.ipv4.tcp_congestion_control = bbr
-
-# TCP SYN cookie protection
-# Helps protect against SYN flood attacks. Only kicks in when net.ipv4.tcp_max_syn_backlog is reached:
-net.ipv4.tcp_syncookies = 1
-
-# TCP Enable ECN Negotiation by default
-net.ipv4.tcp_ecn = 1
-
-# TCP Reduce performance spikes
-# Refer https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/reduce_tcp_performance_spikes
-net.ipv4.tcp_timestamps = 0
-
-# Increase netdev receive queue
-# May help prevent losing packets
-net.core.netdev_max_backlog = 16384
-
-# Disable TCP slow start after idle
-# Helps kill persistent single connection performance
-net.ipv4.tcp_slow_start_after_idle = 0
-
-# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
-net.ipv4.tcp_rfc1337 = 1
 
 # Set the maximum watches on files
 fs.inotify.max_user_watches = 524288
@@ -364,8 +290,6 @@ SERVICES=(
     "power-profiles-daemon"
     "NetworkManager"
     "bluetooth"
-    "gdm"
-    "docker"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
     "btrfs-scrub.timer"
@@ -375,20 +299,6 @@ for service in "${SERVICES[@]}"; do
     systemctl enable "$service"
 done
 
-echo "Configuring firewall..."
-# Configure UFW
- ufw default deny incoming
- ufw default allow outgoing
- ufw allow ssh
- ufw allow http
- ufw allow https
-# KDE Connect ports
- ufw allow 1714:1764/udp
- ufw allow 1714:1764/tcp
- ufw logging on
- ufw enable
- systemctl enable ufw
-
 echo "Disabling file indexing..."
 # Disable file indexing
 if [command -v balooctl6] &> /dev/null; then
@@ -396,10 +306,6 @@ if [command -v balooctl6] &> /dev/null; then
      balooctl6 purge
 fi
 
-# Android SDK setup for bashrc
-echo 'export ANDROID_HOME=$HOME/Android/Sdk' >> ~/.bashrc
-echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
-echo "User setup completed successfully!"
 EOF
 
 umount -R /mnt

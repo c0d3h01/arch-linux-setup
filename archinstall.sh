@@ -104,7 +104,7 @@ echo "Installing base system..."
         git-lfs \
         zram-generator \
         power-profiles-daemon \
-        thermald \
+        thermald ananicy-cpp \
         bluez bluez-utils \
         gamemode \
         corectrl \
@@ -161,12 +161,6 @@ grub-mkconfig -o /boot/grub/grub.cfg
 mkinitcpio -P
 echo "Chroot setup completed successfully!"
 
-echo "Installing GNOME environment..."
-# GNOME installation
-pacman -Sy --needed --noconfirm \
-    gnome \
-    gnome-terminal
-
 # System Optimization
 # Configure ZRAM (optimized for 8GB RAM)
 cat > /etc/systemd/zram-generator.conf <<'ZRAM'
@@ -179,6 +173,48 @@ priority = 32767
 fs-type = swap
 ZRAM
 
+cat > /usr/lib/udev/rules.d/40-hpet-permissions.rules <<'HPETR'
+KERNEL=="rtc0", GROUP="audio"
+KERNEL=="hpet", GROUP="audio"
+HPETR
+
+cat > /usr/lib/udev/rules.d/99-cpu-dma-latency.rules <<'DMA'
+DEVPATH=="/devices/virtual/misc/cpu_dma_latency", OWNER="root", GROUP="audio", MODE="0660"
+DMA
+
+cat > /usr/lib/udev/rules.d/99-ntsync.rules <<'NTSYNC'
+KERNEL=="ntsync", MODE="0644"
+NTSYNC
+
+cat > /usr/lib/udev/rules.d/50-sata.rules <<'SATAR'
+# SATA Active Link Power Management
+ACTION=="add", SUBSYSTEM=="scsi_host", KERNEL=="host*", \
+    ATTR{link_power_management_policy}=="*", \
+    ATTR{link_power_management_policy}="max_performance"
+SATAR
+
+cat > /usr/lib/udev/rules.d/69-hdparm.rules <<'HDPARM'
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", \
+    RUN+="/usr/bin/hdparm -B 254 -S 0 /dev/%k"
+HDPARM
+
+cat > /usr/lib/udev/rules.d/30-zram.rules <<'ZRULES'
+# Prefer to recompress only huge pages. This will result in additional memory
+# savings, but may slightly increase CPU load due to additional compression
+# overhead.
+ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
+  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
+TEST!="/dev/zram0", GOTO="zram_end"
+
+# Since ZRAM stores all pages in compressed form in RAM, we should prefer
+# preempting anonymous pages more than a page (file) cache.  Preempting file
+# pages may not be desirable because a process may want to access a file at any
+# time, whereas if it is preempted, it will cause an additional read cycle from
+# the disk.
+SYSCTL{vm.swappiness}="150"
+LABEL="zram_end"
+ZRULES
+
 cat > usr/lib/udev/rules.d/60-ioschedulers.rules <<'IOSHED'
 # NVMe SSD
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
@@ -186,11 +222,11 @@ ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
 IOSHED
 
 # System tuning parameters
-cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
+cat > /etc/sysctl.d/99-kernel-sched-rt.conf <<'SYSCTL'
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 # A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
 # and a value of 100 means IO cost is assumed to be equal.
-vm.swappiness = 10
+vm.swappiness = 100
 
 # The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
 # Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
@@ -296,10 +332,10 @@ SERVICES=(
     "power-profiles-daemon"
     "NetworkManager"
     "bluetooth"
-    "gdm"
     "systemd-zram-setup@zram0.service"
     "fstrim.timer"
     "btrfs-scrub.timer"
+    "ananicy-cpp.service"
 )
 
 for service in "${SERVICES[@]}"; do
