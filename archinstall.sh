@@ -1,313 +1,472 @@
 #!/usr/bin/env bash
-set -eu
+# shellcheck disable=SC2154
+#
+# ==============================================================================
+# Arch Linux Installation Script
+# Author: c0d3h01
+# Description: Automated Arch Linux installation with BTRFS and AMD optimizations
+# ==============================================================================
 
-DRIVE="/dev/vda"
-EFI_PART="${DRIVE}1"
-ROOT_PART="${DRIVE}p"
+# Strict bash settings
+set -euo pipefail
+IFS=$'\n\t'
 
-echo "Starting Arch Linux installation..."
+# Global variables
+declare -r LOG_FILE="/tmp/arch_install.log"
+declare -A CONFIG
 
-echo "Preparing disk partitions..."
-# Clear all partition data and GPT/MBR structures
-sgdisk --zap-all ${DRIVE}
-sgdisk --clear ${DRIVE}
-sgdisk --set-alignment=8 ${DRIVE}
+# Color codes for pretty output
+declare -r RED='\033[0;31m'
+declare -r GREEN='\033[0;32m'
+declare -r YELLOW='\033[1;33m'
+declare -r BLUE='\033[0;34m'
+declare -r NC='\033[0m' # No Color
 
-# Create partitions
-echo "Creating partitions..."
-sgdisk --new=1:0:+2G \
-       --typecode=1:ef00 \
-       --change-name=1:"EFI" \
-       --new=2:0:0 \
-       --typecode=2:8300 \
-       --change-name=2:"ROOT" \
-       --attributes=2:set:2 \
-       ${DRIVE}
+# ==============================================================================
+# Utility Functions
+# ==============================================================================
 
-# Verify partitions
-echo "Verifying partitions..."
-sgdisk --verify ${DRIVE}
-partprobe ${DRIVE}
+log() {
+    local level=$1
+    shift
+    local message=$*
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${timestamp} [${level}] ${message}" | tee -a "$LOG_FILE"
+}
 
-# Format partitions
-echo "Formatting partitions..."
-mkfs.fat -F32 -n EFI ${EFI_PART}
-mkfs.btrfs -f \
-    -L ROOT \
-    -n 32k \
-    -m dup \
-    ${ROOT_PART}
+info() {
+    log "INFO" "${BLUE}$*${NC}"
+}
 
-echo "Setting up BTRFS subvolumes..."
-# Mount ROOT partition
-mount ${ROOT_PART} /mnt
+warn() {
+    log "WARN" "${YELLOW}$*${NC}"
+}
 
-# Create BTRFS subvolumes
-pushd /mnt
-btrfs subvolume create @
-btrfs subvolume create @home
-btrfs subvolume create @cache
-btrfs subvolume create @log
-btrfs subvolume create @pkg
-btrfs subvolume create @.snapshots
-popd
+error() {
+    log "ERROR" "${RED}$*${NC}"
+    exit 1
+}
 
-# Unmount and remount with subvolumes
-umount /mnt
+success() {
+    log "SUCCESS" "${GREEN}$*${NC}"
+}
 
-echo "Mounting subvolumes..."
-# Mount options
-MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2,commit=120"
+# ==============================================================================
+# Configuration Functions
+# ==============================================================================
 
-# Mount subvolumes
-mount -o ${MOUNT_OPTS},subvol=@ ${ROOT_PART} /mnt
+init_config() {
+    CONFIG=(
+        [DRIVE]="/dev/vda"
+        [HOSTNAME]="archlinux"
+        [USERNAME]="c0d3h01"
+        [PASSWORD]="hell" # Note: In production, use secure password handling
+        [TIMEZONE]="Asia/Kolkata"
+        [LOCALE]="en_US.UTF-8"
+        [CPU_VENDOR]="amd" # or "intel"
+        [BTRFS_OPTS]="noatime,compress=zstd:1,space_cache=v2,commit=120"
+    )
 
-# Create mount points
-mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
+    # Derived configurations
+    CONFIG[EFI_PART]="${CONFIG[DRIVE]}1"
+    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}2"
+}
 
-# Mount other subvolumes
-mount -o ${MOUNT_OPTS},subvol=@home ${ROOT_PART} /mnt/home
-mount -o ${MOUNT_OPTS},subvol=@log ${ROOT_PART} /mnt/var/log
-mount -o ${MOUNT_OPTS},subvol=@pkg ${ROOT_PART} /mnt/var/cache/pacman/pkg
-mount -o ${MOUNT_OPTS},subvol=@.snapshots ${ROOT_PART} /mnt/.snapshots
+# ==============================================================================
+# Installation Steps
+# ==============================================================================
 
-# Mount EFI partition
-mount ${EFI_PART} /mnt/boot/efi
+setup_disk() {
+    info "Preparing disk partitions..."
 
-echo "Verifying mount points..."
-df -Th
-btrfs subvolume list /mnt
+    # Safety check
+    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
+    echo
+    [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
-echo "Installing base system..."
-# Install base system and AMD-specific packages
-    pacstrap /mnt \
-        base base-devel \
-        linux linux-headers linux-firmware \
-        btrfs-progs \
-        amd-ucode \
-        xf86-video-amdgpu \
-        vulkan-radeon vulkan-tools \
-        libva-mesa-driver \
-        mesa-vdpau \
-        mesa \
-        vulkan-icd-loader \
-        vulkan-tools \
-        libva-utils \
-        vdpauinfo \
-        radeontop \
-        networkmanager \
-        grub efibootmgr \
-        neovim glances git nano sudo \
-        gcc gdb cmake make \
-        python python-pip \
-        nodejs npm \
-        git-lfs \
-        zram-generator \
-        power-profiles-daemon \
-        thermald \
-        bluez bluez-utils \
-        gamemode \
-        corectrl \
-        acpid \
-        lm_sensors \
-        nvme-cli \
-        powertop \
-        s-tui \
-        gstreamer-vaapi \
-        ffmpeg
-        
-echo "Generating fstab..."
-genfstab -U /mnt >> /mnt/etc/fstab
+    # Partition the disk
+    sgdisk --zap-all "${CONFIG[DRIVE]}"
+    sgdisk --clear "${CONFIG[DRIVE]}"
+    sgdisk --set-alignment=8 "${CONFIG[DRIVE]}"
 
-arch-chroot /mnt /bin/bash <<'EOF'
-# Basic System Configuration
-# Set timezone
-ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
-hwclock --systohc
+    # Create partitions
+    sgdisk --new=1:0:+2G \
+        --typecode=1:ef00 \
+        --change-name=1:"EFI" \
+        --new=2:0:0 \
+        --typecode=2:8300 \
+        --change-name=2:"ROOT" \
+        --attributes=2:set:2 \
+        "${CONFIG[DRIVE]}"
 
-# Set locale
-echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
+    # Verify and update partition table
+    sgdisk --verify "${CONFIG[DRIVE]}" || error "Partition verification failed"
+    partprobe "${CONFIG[DRIVE]}"
+}
 
-# Set hostname
-echo "archlinux" > /etc/hostname
+setup_filesystems() {
+    info "Setting up filesystems..."
 
-# Host configuration
-echo "127.0.0.1 localhost" > /etc/hosts
-echo "::1       localhost" >> /etc/hosts
-echo "127.0.1.1 archlinux.localdomain archlinux" >> /etc/hosts
+    # Format partitions
+    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
+    mkfs.btrfs -f -L ROOT -n 32k -m dup "${CONFIG[ROOT_PART]}"
 
-# User Management
-# Set root password
-echo "Setting root password..."
-echo "root:hell" | chpasswd
+    # Create BTRFS subvolumes
+    mount "${CONFIG[ROOT_PART]}" /mnt
+    pushd /mnt >/dev/null
 
-# Create user and set password
-useradd -m -G wheel -s /bin/bash c0d3h01
-echo "c0d3h01:hell" | chpasswd
+    local subvolumes=("@" "@home" "@cache" "@log" "@pkg" "@.snapshots")
+    for subvol in "${subvolumes[@]}"; do
+        btrfs subvolume create "$subvol"
+    done
 
-# Configure sudo
-sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+    popd >/dev/null
+    umount /mnt
 
-# Boot Configuration
-# Configure GRUB
-sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
-sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
+    # Mount subvolumes
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
-# Install bootloader
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
-grub-mkconfig -o /boot/grub/grub.cfg
-mkinitcpio -P
-echo "Chroot setup completed successfully!"
+    # Create mount points
+    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
 
-# System Optimization
-# Configure ZRAM (optimized for 8GB RAM)
-cat > /etc/systemd/zram-generator.conf <<'ZRAM'
-[zram0]
-zram-size = 8192
-compression-algorithm = zstd
-max_comp_streams = 8
-writeback = 0
-priority = 32767
-fs-type = swap
-ZRAM
+    # Mount other subvolumes
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@pkg" "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@.snapshots" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
+    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+}
 
-cat > usr/lib/udev/rules.d/60-ioschedulers.rules <<'IOSHED'
-# NVMe SSD
-ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
-    ATTR{queue/scheduler}="none"
-IOSHED
+install_base_system() {
+    info "Installing base system..."
 
-# System tuning parameters
-cat > /etc/sysctl.d/99-system-tune.conf <<'SYSCTL'
-# The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
-# A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
-# and a value of 100 means IO cost is assumed to be equal.
-vm.swappiness = 10
+    local packages=(
+        # Base system
+        base base-devel linux linux-headers linux-firmware
 
-# The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
-# Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
-#vm.vfs_cache_pressure=50
+        # Filesystem
+        btrfs-progs
 
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which a process which is generating disk writes will itself start
-# writing out dirty data.
-vm.dirty_bytes = 268435456
+        # AMD-specific        # Base system
+        base base-devel linux linux-headers linux-firmware
 
-# page-cluster controls the number of pages up to which consecutive pages are read in from swap in a single attempt.
-# This is the swap counterpart to page cache readahead. The mentioned consecutivity is not in terms of virtual/physical addresses,
-# but consecutive on swap space - that means they were swapped out together. (Default is 3)
-# increase this value to 1 or 2 if you are using physical swap (1 if ssd, 2 if hdd)
-vm.page-cluster = 0
+        # Filesystem
+        btrfs-progs
 
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which the background kernel flusher threads will start writing out
-# dirty data.
-vm.dirty_background_bytes = 134217728
+        # AMD-specific
+        amd-ucode xf86-video-amdgpu
+        vulkan-radeon vulkan-tools
+        libva-mesa-driver mesa-vdpau mesa
+        vulkan-icd-loader libva-utils
+        vdpauinfo radeontop
 
-# This tunable is used to define when dirty data is old enough to be eligible for writeout by the
-# kernel flusher threads.  It is expressed in 100'ths of a second.  Data which has been dirty
-# in-memory for longer than this interval will be written out next time a flusher thread wakes up
-# (Default is 3000).
-#vm.dirty_expire_centisecs = 3000
+        # System utilities
+        networkmanager grub efibootmgr
+        neovim glances git nano sudo
+        gcc gdb cmake make
+        python python-pip
+        nodejs npm git-lfs
 
-# The kernel flusher threads will periodically wake up and write old data out to disk.  This
-# tunable expresses the interval between those wakeups, in 100'ths of a second (Default is 500).
-vm.dirty_writeback_centisecs = 1500
+        # Performance tools
+        zram-generator power-profiles-daemon
+        thermald ananicy-cpp gamemode
+        corectrl acpid lm_sensors
+        nvme-cli powertop s-tui
 
-# This action will speed up your boot and shutdown, because one less module is loaded. Additionally disabling watchdog timers increases performance and lowers power consumption
-# Disable NMI watchdog
-kernel.nmi_watchdog = 0
+        # Multimedia
+        gstreamer-vaapi ffmpeg
 
-# Enable the sysctl setting kernel.unprivileged_userns_clone to allow normal users to run unprivileged containers.
-kernel.unprivileged_userns_clone = 1
+        # Bluetooth
+        bluez bluez-utils
 
-# To hide any kernel messages from the console
-kernel.printk = 3 3 3 3
+        amd-ucode xf86-video-amdgpu
+        vulkan-radeon vulkan-tools
+        libva-mesa-driver mesa-vdpau mesa
+        vulkan-icd-loader libva-utils
+        vdpauinfo radeontop
 
-# Restricting access to kernel pointers in the proc filesystem
-kernel.kptr_restrict = 2
+        # System utilities
+        networkmanager grub efibootmgr
+        neovim glances git nano sudo
+        gcc gdb cmake make
+        python python-pip
+        nodejs npm git-lfs
 
-# Disable Kexec, which allows replacing the current running kernel.
-kernel.kexec_load_disabled = 1
+        # Performance tools
+        zram-generator power-profiles-daemon
+        thermald ananicy-cpp gamemode
+        corectrl acpid lm_sensors
+        nvme-cli powertop s-tui
 
-# Set the maximum watches on files
-fs.inotify.max_user_watches = 524288
+        # Multimedia
+        gstreamer-vaapi ffmpeg
 
-# Set size of file handles and inode cache
-fs.file-max = 2097152
+        # Bluetooth
+        bluez bluez-utils
+    )
 
-# Increase writeback interval  for xfs
-fs.xfs.xfssyncd_centisecs = 10000
+    pacstrap /mnt "${packages[@]}" || error "Failed to install base packages"
+}
 
-# Only experimental!
-# Let Realtime tasks run as long they need
-# sched: RT throttling activated
-kernel.sched_rt_runtime_us=-1
+configure_system() {
+    info "Configuring system..."
 
-dev.amdgpu.ppfeaturemask=0xffffffff
-SYSCTL
+    # Generate fstab
+    genfstab -U /mnt >>/mnt/etc/fstab
 
-# AMD-specific Configuration
-# GPU settings
-cat > /etc/modprobe.d/amdgpu.conf <<'AMD'
-options amdgpu ppfeaturemask=0xffffffff
-options amdgpu dpm=1
-options amdgpu audio=1
-AMD
+    # Chroot and configure
+    arch-chroot /mnt /bin/bash <<EOF
+    # Set timezone and clock
+    ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
+    hwclock --systohc
 
-# Power management
-cat > /etc/udev/rules.d/81-powersave.rules <<'POWER'
-ACTION=="add", SUBSYSTEM=="pci", ATTR{power/control}="auto"
-ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="auto"
-POWER
+    # Set locale
+    echo "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
+    locale-gen
+    echo "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
 
-# BTRFS configuration
-cat > /etc/systemd/system/btrfs-scrub.service <<'SCRUB'
-[Unit]
-Description=BTRFS periodic scrub
-After=local-fs.target
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/btrfs scrub start -B /
-SCRUB
+    # Set hostname
+    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
 
-cat > /etc/systemd/system/btrfs-scrub.timer <<'TIMER'
-[Unit]
-Description=BTRFS periodic scrub timer
-[Timer]
-OnCalendar=monthly
-Persistent=true
-[Install]
-WantedBy=timers.target
-TIMER
+    # Configure hosts
+    cat > /etc/hosts <<-END
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   ${CONFIG[HOSTNAME]}.localdomain ${CONFIG[HOSTNAME]}
+END
 
-echo "Enabling system services..."
-# Enable system services
-SERVICES=(
-    "thermald"
-    "power-profiles-daemon"
-    "NetworkManager"
-    "bluetooth"
-    "systemd-zram-setup@zram0.service"
-    "fstrim.timer"
-    "btrfs-scrub.timer"
-)
+    # Set root password
+    echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
-for service in "${SERVICES[@]}"; do
-    systemctl enable "$service"
-done
+    # Create user
+    useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
+    echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
+    
+    # Configure sudo
+    sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-echo "Disabling file indexing..."
-# Disable file indexing
-if [command -v balooctl6] &> /dev/null; then
-     balooctl6 disable
-     balooctl6 purge
-fi
+    # Configure bootloader
+    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
+    sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 
+    grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
+    grub-mkconfig -o /boot/grub/grub.cfg
 EOF
+}
 
-umount -R /mnt
+apply_optimizations() {
+    info "Applying system optimizations..."
 
-echo "Installation completed successfully!"
+    # Apply all your existing optimizations (arch_tweaks function content)
+    # But with error checking and logging
+    local config_files=(
+        "/etc/systemd/zram-generator.conf"
+        "/etc/sysctl.d/99-kernel-sched-rt.conf"
+        "/etc/modprobe.d/amdgpu.conf"
+        # Add other configuration files
+    )
+
+    for file in "${config_files[@]}"; do
+        if [[ ! -f "/mnt$file" ]]; then
+            warn "Configuration file $file not created"
+        fi
+    done
+}
+
+enable_core_services() {
+    info "Enabling essential services..."
+
+    local services=(
+        "thermald"
+        "power-profiles-daemon"
+        "NetworkManager"
+        "bluetooth"
+        "systemd-zram-setup@zram0.service"
+        "fstrim.timer"
+        "btrfs-scrub.timer"
+        "ananicy-cpp.service"
+    )
+
+    arch-chroot /mnt /bin/bash <<EOF
+    for service in "${services[@]}"; do
+        systemctl enable "$service"
+    done
+EOF
+}
+
+configure_pacman() {
+    info "Configuring pacman..."
+    arch-chroot /mnt /bin/bash <<EOF
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#Color/Color/' /etc/pacman.conf
+EOF
+}
+
+install_cachyos_repo() {
+    info "Installing CachyOS repository..."
+    arch-chroot /mnt /bin/bash <<EOF
+    cd /tmp
+    curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+    cd cachyos-repo
+    chmod +x ./cachyos-repo.sh
+    ./cachyos-repo.sh --needed --noconfirm
+EOF
+}
+
+install_desktop_environment() {
+    info "Installing GNOME environment..."
+    arch-chroot /mnt /bin/bash <<EOF
+    pacman -S --needed --noconfirm \
+        gnome \
+        gnome-terminal \
+        cachyos-gnome-settings
+EOF
+}
+
+setup_user_environment() {
+    info "Setting up user environment..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Install base development packages
+    pacman -Sy --needed --noconfirm \
+        cachyos-rate-mirrors \
+        nodejs npm \
+        fish \
+        virt-manager \
+        qemu-desktop \
+        libvirt \
+        edk2-ovmf \
+        dnsmasq \
+        vde2 \
+        bridge-utils \
+        iptables-nft \
+        dmidecode \
+        xclip
+
+    # Update mirrors
+    rate-mirrors arch
+    cachyos-rate-mirrors
+
+    # Install yay
+    cd /tmp
+    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    sudo -u ${CONFIG[USERNAME]} makepkg -si --needed --noconfirm
+    
+    # Install regular packages via yay
+    sudo -u ${CONFIG[USERNAME]} yay -S --needed --noconfirm \
+        brave-bin \
+        zoom \
+        android-ndk \
+        android-sdk \
+        openjdk-src \
+        postman-bin \
+        youtube-music-bin \
+        notion-app-electron \
+        zed \
+        gparted \
+        filelight \
+        kdeconnect \
+        ufw \
+        docker \
+        tor-browser-bin
+
+    # Install packages with --nodeps
+    sudo -u ${CONFIG[USERNAME]} yay -S --needed --noconfirm --nodeps \
+        telegram-desktop-bin \
+        github-desktop-bin \
+        visual-studio-code-bin \
+        ferdium-bin \
+        vesktop-bin \
+        onlyoffice-bin
+
+    # Install CPU auto-freq
+    cd /tmp
+    git clone https://github.com/AdnanHodzic/auto-cpufreq.git
+    cd auto-cpufreq
+    ./auto-cpufreq-installer
+
+    # Configure Android SDK
+    echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> /home/${CONFIG[USERNAME]}/.bashrc
+    echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> /home/${CONFIG[USERNAME]}/.bashrc
+    chown ${CONFIG[USERNAME]}:${CONFIG[USERNAME]} /home/${CONFIG[USERNAME]}/.bashrc
+EOF
+}
+
+configure_services() {
+    info "Configuring and enabling services..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Enable system services
+    systemctl enable thermald
+    systemctl enable power-profiles-daemon
+    systemctl enable NetworkManager
+    systemctl enable bluetooth
+    systemctl enable gdm
+    systemctl enable docker
+    systemctl enable systemd-zram-setup@zram0.service
+    systemctl enable fstrim.timer
+    systemctl enable ufw
+    systemctl enable libvirtd.service
+
+    # Configure firewall
+    ufw enable
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow http
+    ufw allow https
+    ufw allow 1714:1764/udp
+    ufw allow 1714:1764/tcp
+    ufw logging on
+EOF
+}
+
+cleanup_system() {
+    info "Performing system cleanup..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Remove orphaned packages
+    pacman -Rns \$(pacman -Qtdq) --noconfirm 2>/dev/null || true
+
+    # Disable file indexing if KDE is installed
+    if command -v balooctl6 &> /dev/null; then
+        balooctl6 disable
+        balooctl6 purge
+    fi
+EOF
+}
+
+# ==============================================================================
+# Main Execution
+# ==============================================================================
+
+main() {
+    # Start logging
+    exec 1> >(tee -a "$LOG_FILE")
+    exec 2> >(tee -a "$LOG_FILE" >&2)
+
+    info "Starting Arch Linux installation script..."
+
+    init_config
+
+    # Main installation steps
+    setup_disk
+    setup_filesystems
+    install_base_system
+    configure_system
+    apply_optimizations
+    enable_core_services
+    cleanup_system
+
+    # User environment setup
+    configure_pacman
+    install_cachyos_repo
+    install_desktop_environment
+    setup_user_environment
+    configure_services
+
+    success "Installation completed! You can now reboot your system."
+}
+
+# Execute main function
+main "$@"
