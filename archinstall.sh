@@ -245,90 +245,12 @@ configure_pacman() {
 EOF
 }
 
-# Cachyos repo installation
-install_cachyos_repo() {
-    info "Installing CachyOS repository..."
-    arch-chroot /mnt /bin/bash <<EOF
-add_specific_repo() {
-    local isa_level="$1"
-    local gawk_script="$2"
-    local repo_name="$3"
-    local cmd_check="check_supported_isa_level ${isa_level}"
-    local pacman_conf="/etc/pacman.conf"
-    local pacman_conf_cachyos="./pacman.conf"
-    local pacman_conf_path_backup="/etc/pacman.conf.bak"
-    local is_isa_supported="$(eval ${cmd_check})"
-    
-    if [ $is_isa_supported -eq 0 ]; then
-        info "${isa_level} is supported"
-
-        cp $pacman_conf $pacman_conf_cachyos
-        gawk -i inplace -f $gawk_script $pacman_conf_cachyos || true
-
-        info "Backup old config"
-        mv $pacman_conf $pacman_conf_path_backup
-
-        info "CachyOS ${repo_name} Repo changed"
-        mv $pacman_conf_cachyos $pacman_conf
-    else
-        info "${isa_level} is not supported"
-    fi
-}
-
-check_supported_isa_level() {
-    /lib/ld-linux-x86-64.so.2 --help | grep "$1 (supported, searched)" > /dev/null
-    echo $?
-}
-
-check_supported_znver45() {
-    gcc -march=native -Q --help=target 2>&1 | head -n 35 | grep -E '(znver4|znver5)' > /dev/null
-    echo $?
-}
-
-check_if_repo_was_added() {
-    cat /etc/pacman.conf | grep "(cachyos\|cachyos-v3\|cachyos-core-v3\|cachyos-extra-v3\|cachyos-testing-v3\|cachyos-v4\|cachyos-core-v4\|cachyos-extra-v4\|cachyos-znver4\|cachyos-core-znver4\|cachyos-extra-znver4)" > /dev/null
-    echo $?
-}
-
-check_if_repo_was_commented() {
-    cat /etc/pacman.conf | grep "cachyos\|cachyos-v3\|cachyos-core-v3\|cachyos-extra-v3\|cachyos-testing-v3\|cachyos-v4\|cachyos-core-v4\|cachyos-extra-v4\|cachyos-znver4\|cachyos-core-znver4\|cachyos-extra-znver4" | grep -v "#\[" | grep "\[" > /dev/null
-    echo $?
-}
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-
-    local mirror_url="https://mirror.cachyos.org/repo/x86_64/cachyos"
-
-    pacman -U "${mirror_url}/cachyos-keyring-20240331-1-any.pkg.tar.zst" \
-              "${mirror_url}/cachyos-mirrorlist-18-1-any.pkg.tar.zst"    \
-              "${mirror_url}/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst" \
-              "${mirror_url}/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst"  \
-              "${mirror_url}/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst"
-
-    local is_repo_added="$(check_if_repo_was_added)"
-    local is_repo_commented="$(check_if_repo_was_commented)"
-    local is_isa_v4_supported="$(check_supported_isa_level x86-64-v4)"
-    local is_znver_supported="$(check_supported_znver45)"
-    
-    if [ $is_repo_added -ne 0 ] || [ $is_repo_commented -ne 0 ]; then
-        if [ $is_znver_supported -eq 0 ]; then
-            add_specific_repo x86-64-v4 ./install-znver4-repo.awk cachyos-znver4
-        elif [ $is_isa_v4_supported -eq 0 ]; then
-            add_specific_repo x86-64-v4 ./install-v4-repo.awk cachyos-v4
-        else
-            add_specific_repo x86-64-v3 ./install-repo.awk cachyos-v3
-        fi
-    sudo pacman -Syu --needed --noconfirm
-EOF
-}
-
 install_desktop_environment() {
     info "Installing GNOME environment..."
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm \
         gnome \
-        gnome-terminal \
-        cachyos-gnome-settings
+        gnome-terminal
 EOF
 }
 
@@ -353,7 +275,6 @@ setup_user_environment() {
 
     # Update mirrors
     rate-mirrors arch
-    cachyos-rate-mirrors
 
     # Install yay
     cd /tmp
