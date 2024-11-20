@@ -259,7 +259,7 @@ setup_user_environment() {
     arch-chroot /mnt /bin/bash <<EOF
     # Install base development packages
     pacman -Sy --needed --noconfirm \
-        cachyos-rate-mirrors \
+        rate-mirrors \
         nodejs npm \
         fish \
         virt-manager \
@@ -280,7 +280,7 @@ setup_user_environment() {
     cd /tmp
     sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
-    sudo -u ${CONFIG[USERNAME]} makepkg -si --needed --noconfirm
+    sudo -u ${CONFIG[USERNAME]} makepkg -si
     
     # Install regular packages via yay
     sudo -u ${CONFIG[USERNAME]} yay -S --needed --noconfirm \
