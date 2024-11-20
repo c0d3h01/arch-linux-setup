@@ -226,21 +226,15 @@ EOF
 
 apply_optimizations() {
     info "Applying system optimizations..."
-
-    # Apply all your existing optimizations (arch_tweaks function content)
-    # But with error checking and logging
-    local config_files=(
-        "/etc/systemd/zram-generator.conf"
-        "/etc/sysctl.d/99-kernel-sched-rt.conf"
-        "/etc/modprobe.d/amdgpu.conf"
-        # Add other configuration files
-    )
-
-    for file in "${config_files[@]}"; do
-        if [[ ! -f "/mnt$file" ]]; then
-            warn "Configuration file $file not created"
-        fi
-    done
+    cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+[zram0]
+zram-size = 8192    # 8GB of RAM for ZRAM
+compression-algorithm = zstd
+max-comp-streams = 8
+writeback = 0
+priority = 32767
+device-type = swap
+ZRAMCONF
 }
 
 enable_core_services() {
