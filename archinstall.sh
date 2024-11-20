@@ -246,17 +246,19 @@ EOF
 }
 
 # Cachyos repo installation
+install_cachyos_repo() {
+    info "Installing CachyOS repository..."
+    arch-chroot /mnt /bin/bash <<EOF
 add_specific_repo() {
     local isa_level="$1"
     local gawk_script="$2"
     local repo_name="$3"
     local cmd_check="check_supported_isa_level ${isa_level}"
-
     local pacman_conf="/etc/pacman.conf"
     local pacman_conf_cachyos="./pacman.conf"
     local pacman_conf_path_backup="/etc/pacman.conf.bak"
-
     local is_isa_supported="$(eval ${cmd_check})"
+    
     if [ $is_isa_supported -eq 0 ]; then
         info "${isa_level} is supported"
 
@@ -292,10 +294,6 @@ check_if_repo_was_commented() {
     cat /etc/pacman.conf | grep "cachyos\|cachyos-v3\|cachyos-core-v3\|cachyos-extra-v3\|cachyos-testing-v3\|cachyos-v4\|cachyos-core-v4\|cachyos-extra-v4\|cachyos-znver4\|cachyos-core-znver4\|cachyos-extra-znver4" | grep -v "#\[" | grep "\[" > /dev/null
     echo $?
 }
-
-install_cachyos_repo() {
-    info "Installing CachyOS repository..."
-    arch-chroot /mnt /bin/bash <<EOF
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
 
