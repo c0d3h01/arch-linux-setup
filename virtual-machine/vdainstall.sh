@@ -58,7 +58,7 @@ success() {
 
 init_config() {
     CONFIG=(
-        [DRIVE]="/dev/nvme0n1"
+        [DRIVE]="/dev/vda"
         [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
         [PASSWORD]="hell" # Note: In production, use secure password handling
@@ -69,8 +69,8 @@ init_config() {
     )
 
     # Derived configurations
-    CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
-    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}p2"
+    CONFIG[EFI_PART]="${CONFIG[DRIVE]}1"
+    CONFIG[ROOT_PART]="${CONFIG[DRIVE]}2"
 }
 
 # ==============================================================================
@@ -148,7 +148,38 @@ install_base_system() {
         # Filesystem
         btrfs-progs
 
+        # AMD-specific        # Base system
+        base base-devel linux linux-headers linux-firmware
+
+        # Filesystem
+        btrfs-progs
+
         # AMD-specific
+        amd-ucode xf86-video-amdgpu
+        vulkan-radeon vulkan-tools
+        libva-mesa-driver mesa-vdpau mesa
+        vulkan-icd-loader libva-utils
+        vdpauinfo radeontop
+
+        # System utilities
+        networkmanager grub efibootmgr
+        neovim glances git nano sudo
+        gcc gdb cmake make
+        python python-pip
+        nodejs npm git-lfs
+
+        # Performance tools
+        zram-generator power-profiles-daemon
+        thermald ananicy-cpp gamemode
+        corectrl acpid lm_sensors
+        nvme-cli powertop s-tui
+
+        # Multimedia
+        gstreamer-vaapi ffmpeg
+
+        # Bluetooth
+        bluez bluez-utils
+
         amd-ucode xf86-video-amdgpu
         vulkan-radeon vulkan-tools
         libva-mesa-driver mesa-vdpau mesa
