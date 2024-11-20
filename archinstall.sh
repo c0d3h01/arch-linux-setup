@@ -237,27 +237,6 @@ device-type = swap
 ZRAMCONF
 }
 
-enable_core_services() {
-    info "Enabling essential services..."
-
-    local services=(
-        "thermald"
-        "power-profiles-daemon"
-        "NetworkManager"
-        "bluetooth"
-        "systemd-zram-setup@zram0.service"
-        "fstrim.timer"
-        "btrfs-scrub.timer"
-        "ananicy-cpp.service"
-    )
-
-    arch-chroot /mnt /bin/bash <<EOF
-    for service in "${services[@]}"; do
-        systemctl enable "$service"
-    done
-EOF
-}
-
 configure_pacman() {
     info "Configuring pacman..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -345,10 +324,10 @@ setup_user_environment() {
         onlyoffice-bin
 
     # Install CPU auto-freq
-    cd /tmp
-    git clone https://github.com/AdnanHodzic/auto-cpufreq.git
-    cd auto-cpufreq
-    ./auto-cpufreq-installer
+    #cd /tmp
+    #git clone https://github.com/AdnanHodzic/auto-cpufreq.git
+    #cd auto-cpufreq
+    #./auto-cpufreq-installer
 
     # Configure Android SDK
     echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> /home/${CONFIG[USERNAME]}/.bashrc
@@ -417,16 +396,13 @@ main() {
     setup_filesystems
     install_base_system
     configure_system
-    apply_optimizations
-    enable_core_services
-    cleanup_system
-
-    # User environment setup
     configure_pacman
     install_cachyos_repo
     install_desktop_environment
     setup_user_environment
+    apply_optimizations
     configure_services
+    cleanup_system
 
     success "Installation completed! You can now reboot your system."
 }
