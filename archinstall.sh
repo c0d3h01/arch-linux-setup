@@ -7,9 +7,7 @@
 # Description: Automated Arch Linux installation with BTRFS and AMD optimizations
 # ==============================================================================
 
-# Strict bash settings
-set -euo pipefail
-IFS=$'\n\t'
+set -e
 
 # Global variables
 declare -r LOG_FILE="/tmp/arch_install.log"
@@ -248,6 +246,22 @@ configure_pacman() {
 EOF
 }
 
+install_cachyos_repo() {
+    info "Installing CachyOS repository..."
+    arch-chroot /mnt /bin/bash <<EOF
+    curl -LO https://mirror.cachyos.org/cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+    cd cachyos-repo
+
+    ./cachyos-repo.sh
+
+    cd ..
+    rm -rf cachyos-repo cachyos-repo.tar.xz
+
+    pacman -Sy
+EOF
+}
+
 install_desktop_environment() {
     info "Installing GNOME environment..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -265,7 +279,6 @@ setup_user_environment() {
     pacman -Sy --needed --noconfirm \
         rate-mirrors-bin cachyos-rate-mirrors\
         nodejs npm \
-        fish \
         virt-manager qemu-desktop libvirt edk2-ovmf dnsmasq vde2 bridge-utils iptables-nft dmidecode \
         xclip
 
@@ -298,7 +311,7 @@ setup_user_environment() {
         gparted \
         filelight \
         kdeconnect \
-        ufw-extras \
+        ufw-extras linutil-bin \
         docker \
         tor-browser-bin
 
