@@ -341,89 +341,6 @@ configure_pacman() {
 EOF
 }
 
-install_cachyos_repo() {
-    echo "Installing CachyOS repository..."
-    
-    arch-chroot /mnt /bin/bash <<EOF
-    # Import CachyOS GPG key
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-
-    # Install CachyOS keyring and mirrorlist packages
-    pacman -S --noconfirm wget
-
-    wget -O cachyos-keyring.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst
-    wget -O cachyos-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst
-    wget -O cachyos-v3-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst
-    wget -O cachyos-v4-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst
-    wget -O pacman-update.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst
-
-    pacman -U --noconfirm cachyos-keyring.pkg.tar.zst \
-        cachyos-mirrorlist.pkg.tar.zst \
-        cachyos-v3-mirrorlist.pkg.tar.zst \
-        cachyos-v4-mirrorlist.pkg.tar.zst \
-        pacman-update.pkg.tar.zst
-
-    # Backup original pacman.conf
-    cp /etc/pacman.conf /etc/pacman.conf.backup
-
-    # Create new pacman configuration
-    cat > "/etc/pacman.conf" <<'PACCF'
-# Managed repositories
-[options]
-ParallelDownloads = 5
-Color
-ILoveCandy
-
-# Main repositories
-[core]
-Include = /etc/pacman.d/mirrorlist
-
-[extra]
-Include = /etc/pacman.d/mirrorlist
-
-[community]
-Include = /etc/pacman.d/mirrorlist
-
-# CachyOS repositories
-[cachyos]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-mirrorlist
-
-# Conditional repositories based on CPU architecture
-[cachyos-v3]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-
-[cachyos-core-v3]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-
-[cachyos-extra-v3]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-
-[cachyos-v4]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v4-mirrorlist
-
-[cachyos-core-v4]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v4-mirrorlist
-
-[cachyos-extra-v4]
-SigLevel = Optional TrustAll
-Include = /etc/pacman.d/cachyos-v4-mirrorlist
-PACCF
-
-    # Clean up downloaded packages
-    rm -f cachyos-*.pkg.tar.zst pacman-update.pkg.tar.zst
-
-    # Refresh package databases
-    pacman -Sy --noconfirm
-EOF
-}
-
 setup_user_environment() {
     echo "Setting up user environment..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -554,9 +471,7 @@ main() {
     setup_filesystems
     install_base_system
     configure_system
-    #configure_pacman
-    install_cachyos_repo
-    install_desktop_environment
+    configure_pacman
     setup_user_environment
     apply_optimizations
     configure_services
