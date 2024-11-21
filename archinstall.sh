@@ -277,22 +277,19 @@ setup_user_environment() {
     arch-chroot /mnt /bin/bash <<EOF
     # Install base development packages
     pacman -Sy --needed --noconfirm \
-        rate-mirrors-bin cachyos-rate-mirrors\
         nodejs npm \
-        virt-manager qemu-desktop libvirt edk2-ovmf dnsmasq vde2 bridge-utils iptables-nft dmidecode \
+        virt-manager \
+        qemu-desktop \
+        libvirt \
+        edk2-ovmf \
+        dnsmasq \
+        vde2 \
+        bridge-utils \
+        iptables-nft \
+        dmidecode \
         xclip
 
-    # Update mirrors
-    sudo -u ${CONFIG[USERNAME]} rate-mirrors --entry-country IN \
-    --country-neighbors-per-country 5 \
-    --country-test-mirrors-per-country 3 \
-    arch \
-    | sudo tee /etc/pacman.d/mirrorlist
-  
-    cachyos-rate-mirrors
-    
     # Install yay
-    cd /tmp
     sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
     sudo -u ${CONFIG[USERNAME]} makepkg -si --noconfirm 
