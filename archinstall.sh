@@ -226,6 +226,7 @@ EOF
 
 apply_optimizations() {
     info "Applying system optimizations..."
+    arch-chroot /mnt /bin/bash <<EOF
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
 zram-size = 8192    # 8GB of RAM for ZRAM
@@ -235,6 +236,7 @@ writeback = 0
 priority = 32767
 device-type = swap
 ZRAMCONF
+EOF
 }
 
 configure_pacman() {
