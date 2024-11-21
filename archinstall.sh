@@ -343,58 +343,84 @@ EOF
 
 install_cachyos_repo() {
     echo "Installing CachyOS repository..."
+    
     arch-chroot /mnt /bin/bash <<EOF
+    # Import CachyOS GPG key
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
 
-    pacman -U 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
+    # Install CachyOS keyring and mirrorlist packages
+    pacman -S --noconfirm wget
 
+    wget -O cachyos-keyring.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst
+    wget -O cachyos-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst
+    wget -O cachyos-v3-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst
+    wget -O cachyos-v4-mirrorlist.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst
+    wget -O pacman-update.pkg.tar.zst https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst
+
+    pacman -U --noconfirm cachyos-keyring.pkg.tar.zst \
+        cachyos-mirrorlist.pkg.tar.zst \
+        cachyos-v3-mirrorlist.pkg.tar.zst \
+        cachyos-v4-mirrorlist.pkg.tar.zst \
+        pacman-update.pkg.tar.zst
+
+    # Backup original pacman.conf
+    cp /etc/pacman.conf /etc/pacman.conf.backup
+
+    # Create new pacman configuration
     cat > "/etc/pacman.conf" <<'PACCF'
-# If your CPU supports x86-64, then add only [cachyos] repositories
-# cachyos repos
+# Managed repositories
+[options]
+ParallelDownloads = 5
+Color
+ILoveCandy
+
+# Main repositories
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+[community]
+Include = /etc/pacman.d/mirrorlist
+
+# CachyOS repositories
 [cachyos]
+SigLevel = Optional TrustAll
 Include = /etc/pacman.d/cachyos-mirrorlist
 
-# if your CPU supports x86-64-v3, then add [cachyos-v3],[cachyos-core-v3],[cachyos-extra-v3] and [cachyos]
-# cachyos repos
-# Only add if your CPU does v3 architecture
+# Conditional repositories based on CPU architecture
 [cachyos-v3]
+SigLevel = Optional TrustAll
 Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-core-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-extra-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
 
-# if your CPU supports x86-64-v4, then add [cachyos-v4], [cachyos-core-v4], [cachyos-extra-v4] and [cachyos]
-# cachyos repos
-# Only add if your CPU does support x86-64-v4 architecture
+[cachyos-core-v3]
+SigLevel = Optional TrustAll
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
+[cachyos-extra-v3]
+SigLevel = Optional TrustAll
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
 [cachyos-v4]
+SigLevel = Optional TrustAll
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
+
 [cachyos-core-v4]
+SigLevel = Optional TrustAll
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
+
 [cachyos-extra-v4]
+SigLevel = Optional TrustAll
 Include = /etc/pacman.d/cachyos-v4-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
 PACCF
 
-    pacman -Syu
-EOF
-}
+    # Clean up downloaded packages
+    rm -f cachyos-*.pkg.tar.zst pacman-update.pkg.tar.zst
 
-install_desktop_environment() {
-    echo "Installing GNOME environment..."
-    arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm \
-        gnome \
-        gnome-terminal \
-        cachyos-gnome-settings
+    # Refresh package databases
+    pacman -Sy --noconfirm
 EOF
 }
 
@@ -528,7 +554,7 @@ main() {
     setup_filesystems
     install_base_system
     configure_system
-    configure_pacman
+    #configure_pacman
     install_cachyos_repo
     install_desktop_environment
     setup_user_environment
