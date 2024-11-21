@@ -421,7 +421,6 @@ configure_services() {
     systemctl enable power-profiles-daemon
     systemctl enable NetworkManager
     systemctl enable bluetooth
-    systemctl enable gdm
     systemctl enable docker
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
