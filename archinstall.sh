@@ -228,13 +228,14 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
-[zram0]
-zram-size = 8192    # 8GB of RAM for ZRAM
+zram-size = AUTO
 compression-algorithm = zstd
-max-comp-streams = 8
+max-comp-streams = AUTO
 writeback = 0
 priority = 32767
 device-type = swap
+memory-limit = 0
+compressor-opts = -19
 ZRAMCONF
 EOF
 }
@@ -252,7 +253,8 @@ install_desktop_environment() {
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm \
         gnome \
-        gnome-terminal
+        gnome-terminal \
+        cachyos-gnome-settings
 EOF
 }
 
@@ -261,31 +263,29 @@ setup_user_environment() {
     arch-chroot /mnt /bin/bash <<EOF
     # Install base development packages
     pacman -Sy --needed --noconfirm \
-        rate-mirrors \
+        rate-mirrors-bin cachyos-rate-mirrors\
         nodejs npm \
         fish \
-        virt-manager \
-        qemu-desktop \
-        libvirt \
-        edk2-ovmf \
-        dnsmasq \
-        vde2 \
-        bridge-utils \
-        iptables-nft \
-        dmidecode \
+        virt-manager qemu-desktop libvirt edk2-ovmf dnsmasq vde2 bridge-utils iptables-nft dmidecode \
         xclip
 
     # Update mirrors
-    rate-mirrors arch
-
+    sudo -u ${CONFIG[USERNAME]} rate-mirrors --entry-country IN \
+    --country-neighbors-per-country 5 \
+    --country-test-mirrors-per-country 3 \
+    arch \
+    | sudo tee /etc/pacman.d/mirrorlist
+  
+    cachyos-rate-mirrors
+    
     # Install yay
     cd /tmp
     sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
-    sudo -u ${CONFIG[USERNAME]} makepkg -si
+    sudo -u ${CONFIG[USERNAME]} makepkg -si --noconfirm 
     
     # Install regular packages via yay
-    sudo -u ${CONFIG[USERNAME]} yay -S --needed --noconfirm \
+    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
         brave-bin \
         zoom \
         android-ndk \
@@ -298,24 +298,18 @@ setup_user_environment() {
         gparted \
         filelight \
         kdeconnect \
-        ufw \
+        ufw-extras \
         docker \
         tor-browser-bin
 
     # Install packages with --nodeps
-    sudo -u ${CONFIG[USERNAME]} yay -S --needed --noconfirm --nodeps \
+    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm --nodeps \
         telegram-desktop-bin \
         github-desktop-bin \
         visual-studio-code-bin \
         ferdium-bin \
         vesktop-bin \
         onlyoffice-bin
-
-    # Install CPU auto-freq
-    #cd /tmp
-    #git clone https://github.com/AdnanHodzic/auto-cpufreq.git
-    #cd auto-cpufreq
-    #./auto-cpufreq-installer
 
     # Configure Android SDK
     echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> /home/${CONFIG[USERNAME]}/.bashrc
