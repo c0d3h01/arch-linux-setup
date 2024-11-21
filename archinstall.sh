@@ -302,16 +302,19 @@ setup_user_environment() {
         brave-bin \
         zoom \
         android-ndk \
+        android-tools \
         android-sdk \
+        android-studio \
         openjdk-src \
         postman-bin \
+        flutter \
         youtube-music-bin \
         notion-app-electron \
         zed \
         gparted \
         filelight \
         kdeconnect \
-        ufw-extras linutil-bin paru-bin \
+        ufw-extras linutil-bin paru-bin fastfetch nerdfetch \
         docker \
         tor-browser-bin
 
