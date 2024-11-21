@@ -24,20 +24,20 @@ declare -r NC='\033[0m' # No Color
 # ==============================================================================
 
 info() {
-    echo "INFO" "${BLUE}$*${NC}"
+    info "INFO" "${BLUE}$*${NC}"
 }
 
 warn() {
-    echo "WARN" "${YELLOW}$*${NC}"
+    info "WARN" "${YELLOW}$*${NC}"
 }
 
 error() {
-    echo "ERROR" "${RED}$*${NC}"
+    info "ERROR" "${RED}$*${NC}"
     exit 1
 }
 
 success() {
-    echo "SUCCESS" "${GREEN}$*${NC}"
+    info "SUCCESS" "${GREEN}$*${NC}"
 }
 
 # ==============================================================================
@@ -66,11 +66,11 @@ init_config() {
 # ==============================================================================
 
 setup_disk() {
-    echo "Preparing disk partitions..."
+    info "Preparing disk partitions..."
 
     # Safety check
     read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
-    echo
+    info
     [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
     # Partition the disk
@@ -94,7 +94,7 @@ setup_disk() {
 }
 
 setup_filesystems() {
-    echo "Setting up filesystems..."
+    info "Setting up filesystems..."
 
     # Format partitions
     mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
@@ -127,7 +127,7 @@ setup_filesystems() {
 }
 
 install_base_system() {
-    echo "Installing base system..."
+    info "Installing base system..."
 
     local packages=(
         # Base system
@@ -167,7 +167,7 @@ install_base_system() {
 }
 
 configure_system() {
-    echo "Configuring system..."
+    info "Configuring system..."
 
     # Generate fstab
     genfstab -U /mnt >>/mnt/etc/fstab
@@ -179,12 +179,12 @@ configure_system() {
     hwclock --systohc
 
     # Set locale
-    echo "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
+    info "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
     locale-gen
-    echo "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
+    info "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
 
     # Set hostname
-    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
+    info "${CONFIG[HOSTNAME]}" > /etc/hostname
 
     # Configure hosts
     cat > /etc/hosts <<-END
@@ -194,11 +194,11 @@ configure_system() {
 END
 
     # Set root password
-    echo "root:${CONFIG[PASSWORD]}" | chpasswd
+    info "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create user
     useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
-    echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
+    info "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -214,8 +214,13 @@ EOF
 }
 
 apply_optimizations() {
-    echo "Applying system optimizations..."
+    info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
+    
+    info "Configuring pacman..."
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#Color/Color/' /etc/pacman.conf
+
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 zram-size = 8192
 compression-algorithm = zstd
@@ -225,7 +230,7 @@ priority = 32767
 device-type = swap
 ZRAMCONF
 
-    cat > "sudo micro /etc/sysctl.d/99-kernel-sched-rt.conf" <<'SYS'
+    cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'SYS'
 # sched: RT throttling activated
 kernel.sched_rt_runtime_us=-1
 
@@ -333,135 +338,12 @@ SYS
 EOF
 }
 
-configure_pacman() {
-    echo "Configuring pacman..."
-    arch-chroot /mnt /bin/bash <<EOF
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-    sed -i 's/^#Color/Color/' /etc/pacman.conf
-EOF
-}
-
-setup_user_environment() {
-    echo "Setting up user environment..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Install base development packages
-    pacman -Sy --needed --noconfirm \
-        nodejs npm \
-        virt-manager \
-        qemu-desktop \
-        libvirt \
-        edk2-ovmf \
-        dnsmasq \
-        vde2 \
-        bridge-utils \
-        iptables-nft \
-        dmidecode \
-        xclip \
-        rocm-hip-sdk \
-        rocm-opencl-sdk \
-        python \
-        python-pip \
-        python-numpy \
-        python-pandas \
-        python-scipy \
-        python-matplotlib \
-        python-scikit-learn \
-        torchvision
-
-
-    # Install yay
-    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    sudo -u ${CONFIG[USERNAME]} makepkg -si
-    cd ..
-    rm -rf ./yay-bin
-    
-    # Install regular packages via yay
-    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
-        brave-bin \
-        zoom \
-        android-ndk \
-        android-tools \
-        android-sdk \
-        android-studio \
-        openjdk-src \
-        postman-bin \
-        flutter \
-        youtube-music-bin \
-        notion-app-electron \
-        zed \
-        gparted \
-        filelight \
-        kdeconnect \
-        ufw-extras linutil-bin paru-bin fastfetch nerdfetch \
-        docker \
-        tor-browser-bin
-
-    # Install packages with --nodeps
-    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm --nodeps \
-        telegram-desktop-bin \
-        github-desktop-bin \
-        visual-studio-code-bin \
-        ferdium-bin \
-        vesktop-bin \
-        onlyoffice-bin
-
-    # Configure Android SDK
-    echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> /home/${CONFIG[USERNAME]}/.bashrc
-    echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> /home/${CONFIG[USERNAME]}/.bashrc
-    chown ${CONFIG[USERNAME]}:${CONFIG[USERNAME]} /home/${CONFIG[USERNAME]}/.bashrc
-EOF
-}
-
-configure_services() {
-    echo "Configuring and enabling services..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Enable system services
-    systemctl enable thermald
-    systemctl enable power-profiles-daemon
-    systemctl enable NetworkManager
-    systemctl enable bluetooth
-    systemctl enable docker
-    systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer
-    systemctl enable ufw
-    systemctl enable libvirtd.service
-
-    # Configure firewall
-    ufw enable
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow ssh
-    ufw allow http
-    ufw allow https
-    ufw allow 1714:1764/udp
-    ufw allow 1714:1764/tcp
-    ufw logging on
-EOF
-}
-
-cleanup_system() {
-    echo "Performing system cleanup..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Remove orphaned packages
-    pacman -Rns \$(pacman -Qtdq) --noconfirm 2>/dev/null || true
-
-    # Disable file indexing if KDE is installed
-    if command -v balooctl6 &> /dev/null; then
-        balooctl6 disable
-        balooctl6 purge
-    fi
-    paru -Scc --noconfirm
-    yay -Scc --noconfirm
-EOF
-}
-
 # ==============================================================================
 # Main Execution
 # ==============================================================================
 
 main() {
-    echo "Starting Arch Linux installation script..."
+    info "Starting Arch Linux installation script..."
 
     init_config
 
@@ -470,11 +352,7 @@ main() {
     setup_filesystems
     install_base_system
     configure_system
-    configure_pacman
-    setup_user_environment
     apply_optimizations
-    configure_services
-    cleanup_system
 
     umount -R /mnt
 
