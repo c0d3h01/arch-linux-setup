@@ -24,20 +24,20 @@ declare -r NC='\033[0m' # No Color
 # ==============================================================================
 
 info() {
-    info "INFO" "${BLUE}$*${NC}"
+    echo "INFO" "${BLUE}$*${NC}"
 }
 
 warn() {
-    info "WARN" "${YELLOW}$*${NC}"
+    echo "WARN" "${YELLOW}$*${NC}"
 }
 
 error() {
-    info "ERROR" "${RED}$*${NC}"
+    echo "ERROR" "${RED}$*${NC}"
     exit 1
 }
 
 success() {
-    info "SUCCESS" "${GREEN}$*${NC}"
+    echo "SUCCESS" "${GREEN}$*${NC}"
 }
 
 # ==============================================================================
@@ -66,11 +66,11 @@ init_config() {
 # ==============================================================================
 
 setup_disk() {
-    info "Preparing disk partitions..."
+    echo "Preparing disk partitions..."
 
     # Safety check
     read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
-    info
+    echo
     [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
     # Partition the disk
@@ -94,7 +94,7 @@ setup_disk() {
 }
 
 setup_filesystems() {
-    info "Setting up filesystems..."
+    echo "Setting up filesystems..."
 
     # Format partitions
     mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
@@ -127,7 +127,7 @@ setup_filesystems() {
 }
 
 install_base_system() {
-    info "Installing base system..."
+    echo "Installing base system..."
 
     local packages=(
         # Base system
@@ -167,7 +167,7 @@ install_base_system() {
 }
 
 configure_system() {
-    info "Configuring system..."
+    echo "Configuring system..."
 
     # Generate fstab
     genfstab -U /mnt >>/mnt/etc/fstab
@@ -179,12 +179,12 @@ configure_system() {
     hwclock --systohc
 
     # Set locale
-    info "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
+    echo "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
     locale-gen
-    info "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
+    echo "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
 
     # Set hostname
-    info "${CONFIG[HOSTNAME]}" > /etc/hostname
+    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
 
     # Configure hosts
     cat > /etc/hosts <<-END
@@ -194,11 +194,11 @@ configure_system() {
 END
 
     # Set root password
-    info "root:${CONFIG[PASSWORD]}" | chpasswd
+    echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
     # Create user
     useradd -m -G wheel -s /bin/bash ${CONFIG[USERNAME]}
-    info "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
+    echo "${CONFIG[USERNAME]}:${CONFIG[PASSWORD]}" | chpasswd
     
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -214,10 +214,10 @@ EOF
 }
 
 apply_optimizations() {
-    info "Applying system optimizations..."
+    echo "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     
-    info "Configuring pacman..."
+    echo "Configuring pacman..."
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
 
@@ -343,7 +343,7 @@ EOF
 # ==============================================================================
 
 main() {
-    info "Starting Arch Linux installation script..."
+    echo "Starting Arch Linux installation script..."
 
     init_config
 
