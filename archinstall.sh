@@ -311,7 +311,7 @@ setup_user_environment() {
         gparted \
         filelight \
         kdeconnect \
-        ufw-extras linutil-bin \
+        ufw-extras linutil-bin paru-bin \
         docker \
         tor-browser-bin
 
