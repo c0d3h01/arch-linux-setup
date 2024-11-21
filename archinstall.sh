@@ -10,7 +10,6 @@
 set -e
 
 # Global variables
-declare -r LOG_FILE="/tmp/arch_install.log"
 declare -A CONFIG
 
 # Color codes for pretty output
@@ -24,30 +23,21 @@ declare -r NC='\033[0m' # No Color
 # Utility Functions
 # ==============================================================================
 
-log() {
-    local level=$1
-    shift
-    local message=$*
-    local timestamp
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo -e "${timestamp} [${level}] ${message}" | tee -a "$LOG_FILE"
-}
-
 info() {
-    log "INFO" "${BLUE}$*${NC}"
+    echo "INFO" "${BLUE}$*${NC}"
 }
 
 warn() {
-    log "WARN" "${YELLOW}$*${NC}"
+    echo "WARN" "${YELLOW}$*${NC}"
 }
 
 error() {
-    log "ERROR" "${RED}$*${NC}"
+    echo "ERROR" "${RED}$*${NC}"
     exit 1
 }
 
 success() {
-    log "SUCCESS" "${GREEN}$*${NC}"
+    echo "SUCCESS" "${GREEN}$*${NC}"
 }
 
 # ==============================================================================
@@ -76,7 +66,7 @@ init_config() {
 # ==============================================================================
 
 setup_disk() {
-    info "Preparing disk partitions..."
+    echo "Preparing disk partitions..."
 
     # Safety check
     read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
@@ -104,7 +94,7 @@ setup_disk() {
 }
 
 setup_filesystems() {
-    info "Setting up filesystems..."
+    echo "Setting up filesystems..."
 
     # Format partitions
     mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
@@ -137,7 +127,7 @@ setup_filesystems() {
 }
 
 install_base_system() {
-    info "Installing base system..."
+    echo "Installing base system..."
 
     local packages=(
         # Base system
@@ -177,7 +167,7 @@ install_base_system() {
 }
 
 configure_system() {
-    info "Configuring system..."
+    echo "Configuring system..."
 
     # Generate fstab
     genfstab -U /mnt >>/mnt/etc/fstab
@@ -219,27 +209,132 @@ END
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
     grub-mkconfig -o /boot/grub/grub.cfg
+    mkinitcpio -P
 EOF
 }
 
 apply_optimizations() {
-    info "Applying system optimizations..."
+    echo "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
-zram-size = AUTO
+zram-size = 8192
 compression-algorithm = zstd
-max-comp-streams = AUTO
+max-comp-streams = 8
 writeback = 0
 priority = 32767
 device-type = swap
-memory-limit = 0
-compressor-opts = -19
 ZRAMCONF
+
+    cat > "sudo micro /etc/sysctl.d/99-kernel-sched-rt.conf" <<'SYS'
+# sched: RT throttling activated
+kernel.sched_rt_runtime_us=-1
+
+# The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
+# A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
+# and a value of 100 means IO cost is assumed to be equal.
+vm.swappiness = 100
+
+# The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
+# Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
+#vm.vfs_cache_pressure=50
+
+# Contains, as a bytes of total available memory that contains free pages and reclaimable
+# pages, the number of pages at which a process which is generating disk writes will itself start
+# writing out dirty data.
+vm.dirty_bytes = 268435456
+
+# page-cluster controls the number of pages up to which consecutive pages are read in from swap in a single attempt.
+# This is the swap counterpart to page cache readahead. The mentioned consecutivity is not in terms of virtual/physical addresses,
+# but consecutive on swap space - that means they were swapped out together. (Default is 3)
+# increase this value to 1 or 2 if you are using physical swap (1 if ssd, 2 if hdd)
+vm.page-cluster = 0
+
+# Contains, as a bytes of total available memory that contains free pages and reclaimable
+# pages, the number of pages at which the background kernel flusher threads will start writing out
+# dirty data.
+vm.dirty_background_bytes = 134217728
+
+# This tunable is used to define when dirty data is old enough to be eligible for writeout by the
+# kernel flusher threads.  It is expressed in 100'ths of a second.  Data which has been dirty
+# in-memory for longer than this interval will be written out next time a flusher thread wakes up
+# (Default is 3000).
+#vm.dirty_expire_centisecs = 3000
+
+# The kernel flusher threads will periodically wake up and write old data out to disk.  This
+# tunable expresses the interval between those wakeups, in 100'ths of a second (Default is 500).
+vm.dirty_writeback_centisecs = 1500
+
+# This action will speed up your boot and shutdown, because one less module is loaded. Additionally disabling watchdog timers increases performance and lowers power consumption
+# Disable NMI watchdog
+kernel.nmi_watchdog = 0
+
+# Enable the sysctl setting kernel.unprivileged_userns_clone to allow normal users to run unprivileged containers.
+kernel.unprivileged_userns_clone = 1
+
+# To hide any kernel messages from the console
+kernel.printk = 3 3 3 3
+
+# Restricting access to kernel pointers in the proc filesystem
+kernel.kptr_restrict = 2
+
+# Disable Kexec, which allows replacing the current running kernel.
+kernel.kexec_load_disabled = 1
+
+# Increase the maximum connections
+# The upper limit on how many connections the kernel will accept (default 4096 since kernel version 5.6):
+net.core.somaxconn = 8192
+
+# Enable TCP Fast Open
+# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
+# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
+# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
+net.ipv4.tcp_fastopen = 3
+
+# Enable BBR3
+# The BBR3 congestion control algorithm can help achieve higher bandwidths and lower latencies for internet traffic
+net.ipv4.tcp_congestion_control = bbr
+
+# TCP SYN cookie protection
+# Helps protect against SYN flood attacks. Only kicks in when net.ipv4.tcp_max_syn_backlog is reached:
+net.ipv4.tcp_syncookies = 1
+
+# TCP Enable ECN Negotiation by default
+net.ipv4.tcp_ecn = 1
+
+# TCP Reduce performance spikes
+# Refer https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/reduce_tcp_performance_spikes
+net.ipv4.tcp_timestamps = 0
+
+# Increase netdev receive queue
+# May help prevent losing packets
+net.core.netdev_max_backlog = 16384
+
+# Disable TCP slow start after idle
+# Helps kill persistent single connection performance
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
+net.ipv4.tcp_rfc1337 = 1
+
+# Set the maximum watches on files
+fs.inotify.max_user_watches = 524288
+
+# Set size of file handles and inode cache
+fs.file-max = 2097152
+
+# Increase writeback interval  for xfs
+fs.xfs.xfssyncd_centisecs = 10000
+
+# Only experimental!
+# Let Realtime tasks run as long they need
+# sched: RT throttling activated
+kernel.sched_rt_runtime_us=-1
+SYS
 EOF
 }
 
 configure_pacman() {
-    info "Configuring pacman..."
+    echo "Configuring pacman..."
     arch-chroot /mnt /bin/bash <<EOF
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -247,23 +342,54 @@ EOF
 }
 
 install_cachyos_repo() {
-    info "Installing CachyOS repository..."
+    echo "Installing CachyOS repository..."
     arch-chroot /mnt /bin/bash <<EOF
-    curl -LO https://mirror.cachyos.org/cachyos-repo.tar.xz
-    tar xvf cachyos-repo.tar.xz
-    cd cachyos-repo
+    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key F3B607488DB35A47
 
-    ./cachyos-repo.sh
+    pacman -U 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
 
-    cd ..
-    rm -rf cachyos-repo cachyos-repo.tar.xz
+    cat > "/etc/pacman.conf" <<'PACCF'
+# If your CPU supports x86-64, then add only [cachyos] repositories
+# cachyos repos
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
 
-    pacman -Sy
+# if your CPU supports x86-64-v3, then add [cachyos-v3],[cachyos-core-v3],[cachyos-extra-v3] and [cachyos]
+# cachyos repos
+# Only add if your CPU does v3 architecture
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-core-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-extra-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+
+# if your CPU supports x86-64-v4, then add [cachyos-v4], [cachyos-core-v4], [cachyos-extra-v4] and [cachyos]
+# cachyos repos
+# Only add if your CPU does support x86-64-v4 architecture
+[cachyos-v4]
+Include = /etc/pacman.d/cachyos-v4-mirrorlist
+[cachyos-core-v4]
+Include = /etc/pacman.d/cachyos-v4-mirrorlist
+[cachyos-extra-v4]
+Include = /etc/pacman.d/cachyos-v4-mirrorlist
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+PACCF
+
+    pacman -Syu
 EOF
 }
 
 install_desktop_environment() {
-    info "Installing GNOME environment..."
+    echo "Installing GNOME environment..."
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm \
         gnome \
@@ -273,7 +399,7 @@ EOF
 }
 
 setup_user_environment() {
-    info "Setting up user environment..."
+    echo "Setting up user environment..."
     arch-chroot /mnt /bin/bash <<EOF
     # Install base development packages
     pacman -Sy --needed --noconfirm \
@@ -287,12 +413,25 @@ setup_user_environment() {
         bridge-utils \
         iptables-nft \
         dmidecode \
-        xclip
+        xclip \
+        rocm-hip-sdk \
+        rocm-opencl-sdk \
+        python \
+        python-pip \
+        python-numpy \
+        python-pandas \
+        python-scipy \
+        python-matplotlib \
+        python-scikit-learn \
+        torchvision
+
 
     # Install yay
     sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
-    sudo -u ${CONFIG[USERNAME]} makepkg -si --noconfirm 
+    sudo -u ${CONFIG[USERNAME]} makepkg -si
+    cd ..
+    rm -rf ./yay-bin
     
     # Install regular packages via yay
     sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
@@ -332,7 +471,7 @@ EOF
 }
 
 configure_services() {
-    info "Configuring and enabling services..."
+    echo "Configuring and enabling services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
     systemctl enable thermald
@@ -360,7 +499,7 @@ EOF
 }
 
 cleanup_system() {
-    info "Performing system cleanup..."
+    echo "Performing system cleanup..."
     arch-chroot /mnt /bin/bash <<EOF
     # Remove orphaned packages
     pacman -Rns \$(pacman -Qtdq) --noconfirm 2>/dev/null || true
@@ -370,6 +509,8 @@ cleanup_system() {
         balooctl6 disable
         balooctl6 purge
     fi
+    paru -Scc --noconfirm
+    yay -Scc --noconfirm
 EOF
 }
 
@@ -378,11 +519,7 @@ EOF
 # ==============================================================================
 
 main() {
-    # Start logging
-    exec 1> >(tee -a "$LOG_FILE")
-    exec 2> >(tee -a "$LOG_FILE" >&2)
-
-    info "Starting Arch Linux installation script..."
+    echo "Starting Arch Linux installation script..."
 
     init_config
 
@@ -398,6 +535,8 @@ main() {
     apply_optimizations
     configure_services
     cleanup_system
+
+    umount -R /mnt
 
     success "Installation completed! You can now reboot your system."
 }
