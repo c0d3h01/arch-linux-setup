@@ -59,10 +59,10 @@ init_config() {
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
-        [PASSWORD]="hell" # Note: In production, use secure password handling
+        [PASSWORD]="1981"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
-        [CPU_VENDOR]="amd" # or "intel"
+        [CPU_VENDOR]="amd"
         [BTRFS_OPTS]="noatime,compress=zstd:1,space_cache=v2,commit=120"
     )
 
