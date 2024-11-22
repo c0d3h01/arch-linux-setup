@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
 # ==============================================================================
-# Advanced Arch Linux Installation Script
+# Arch Linux Installation Script
 # ==============================================================================
 
 # Color codes
@@ -22,8 +22,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [KERNEL_TYPE]="default"  # Options: default, zen, lts, cachyos-autofdo
-        [BTRFS_OPTS]="noatime,compress=zstd:1,space_cache=v2,commit=120"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,space_cache=v2,commit=120"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -33,42 +32,11 @@ init_config() {
 # Logging functions
 info() { echo -e "${BLUE}INFO:${NC} $*"; }
 warn() { echo -e "${YELLOW}WARN:${NC} $*"; }
-error() { echo -e "${RED}ERROR:${NC} $*" >&2; exit 1; }
-success() { echo -e "${GREEN}SUCCESS:${NC} $*"; }
-
-# Kernel selection function
-select_kernel() {
-    local kernel_packages=()
-    local headers_packages=()
-
-    case "${CONFIG[KERNEL_TYPE]}" in
-        "zen")
-            kernel_packages+=("linux-zen" "linux-zen-headers")
-            ;;
-        "lts")
-            kernel_packages+=("linux-lts" "linux-lts-headers")
-            ;;
-        "cachyos-autofdo")
-            # Add CachyOS repository first
-            pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-            pacman-key --lsign-key F3B607488DB35A47
-            
-            # Add CachyOS repositories to pacman.conf
-            cat >> /etc/pacman.conf <<EOL
-[cachyos]
-Server = https://repo.cachyos.org/x86_64/x86_64
-SigLevel = Required DatabaseOptional
-EOL
-            
-            kernel_packages+=("linux-cachyos-autofdo" "linux-cachyos-autofdo-headers")
-            ;;
-        *)
-            kernel_packages+=("linux" "linux-headers")
-            ;;
-    esac
-
-    echo "${kernel_packages[@]}"
+error() {
+    echo -e "${RED}ERROR:${NC} $*" >&2
+    exit 1
 }
+success() { echo -e "${GREEN}SUCCESS:${NC} $*"; }
 
 # Disk preparation function
 setup_disk() {
@@ -136,14 +104,9 @@ setup_filesystems() {
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
-
-    # Select kernel based on configuration
-    local kernel_packages
-    mapfile -t kernel_packages < <(select_kernel)
-
     local base_packages=(
         # Base system
-        base base-devel "${kernel_packages[@]}" linux-firmware
+        base base-devel linux linux-headers linux-firmware
         # Filesystem
         btrfs-progs
         # AMD-specific
@@ -155,7 +118,7 @@ install_base_system() {
         # System utilities
         networkmanager grub efibootmgr
         neovim glances git nano sudo
-        gcc gdb cmake make
+        gcc gdb cmake make mtools
         python python-pip
         nodejs npm git-lfs
     )
@@ -168,7 +131,7 @@ configure_system() {
     info "Configuring system..."
 
     # Generate fstab
-    genfstab -U /mnt >> /mnt/etc/fstab
+    genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
     arch-chroot /mnt /bin/bash <<EOF
@@ -186,9 +149,13 @@ configure_system() {
 
     # Configure hosts
     cat > /etc/hosts <<-END
-127.0.0.1   localhost
-::1         localhost
-127.0.1.1   ${CONFIG[HOSTNAME]}.localdomain ${CONFIG[HOSTNAME]}
+# Standard host addresses
+127.0.0.1  localhost
+::1        localhost ip6-localhost ip6-loopback
+ff02::1    ip6-allnodes
+ff02::2    ip6-allrouters
+# This host address
+127.0.1.1  ${CONFIG[HOSTNAME]}
 END
 
     # Set root password
@@ -202,7 +169,7 @@ END
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
     # Configure bootloader
-    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet amd_pstate=active amdgpu.ppfeaturemask=0xffffffff zswap.enabled=0 zram.enabled=1 zram.num_devices=1 rootflags=subvol=@ mitigations=off random.trust_cpu=on page_alloc.shuffle=1"|' /etc/default/grub
+    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="nowatchdog nvme_load=YES zswap.enabled=0 splash loglevel=3"|' /etc/default/grub
     sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
@@ -217,8 +184,32 @@ apply_optimizations() {
     arch-chroot /mnt /bin/bash <<EOF
     
     # Pacman optimization
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
+    sed -i 's/^ILoveCandy/' /etc/pacman.conf
+    sed -i 's/^#DisableDownloadTimeout/DisableDownloadTimeout' /etc/pacman.conf
+
+    cat > "usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IO'
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", \
+    ATTR{queue/scheduler}="bfq"
+
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", \
+    ATTR{queue/scheduler}="mq-deadline"
+
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
+    ATTR{queue/scheduler}="none"
+IO
+
+    cat > "usr/lib/modprobe.d/nvidia.conf" <<'NVID'
+options nvidia NVreg_UsePageAttributeTable=1 \
+    NVreg_InitializeSystemMemoryAllocations=0 \
+    NVreg_DynamicPowerManagement=0x02 \
+    NVreg_EnableGpuFirmware=0
+options nvidia_drm modeset=1 fbdev=1
+NVID
 
     # ZRAM configuration
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
@@ -230,16 +221,48 @@ priority = 32767
 device-type = swap
 ZRAMCONF
 
+    cat > "usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
+ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
+  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
+
+TEST!="/dev/zram0", GOTO="zram_end"
+
+SYSCTL{vm.swappiness}="150"
+
+LABEL="zram_end"
+ZRULES
+
     # Advanced kernel tuning
     cat > "/etc/sysctl.d/99-kernel-optimization.conf" <<'SYS'
-kernel.sched_rt_runtime_us=-1
-vm.swappiness=100
-vm.dirty_bytes=268435456
-vm.page-cluster=0
-vm.dirty_background_bytes=134217728
-vm.dirty_writeback_centisecs=1500
-kernel.nmi_watchdog=0
-SYS
+vm.swappiness = 100
+vm.vfs_cache_pressure=50
+vm.dirty_bytes = 268435456
+vm.page-cluster = 0
+vm.dirty_background_bytes = 134217728
+vm.dirty_expire_centisecs = 3000
+vm.dirty_writeback_centisecs = 1500
+
+kernel.nmi_watchdog = 0
+kernel.unprivileged_userns_clone = 1
+kernel.printk = 3 3 3 3
+kernel.kptr_restrict = 2
+kernel.kexec_load_disabled = 1
+
+net.core.somaxconn = 8192
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_ecn = 1
+net.ipv4.tcp_timestamps = 0
+net.core.netdev_max_backlog = 16384
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_rfc1337 = 1
+
+fs.inotify.max_user_watches = 524288
+fs.file-max = 2097152
+fs.xfs.xfssyncd_centisecs = 10000
+
+kernel.sched_rt_runtime_us=-1SYS
 EOF
 }
 
@@ -248,9 +271,9 @@ setup_user_environment() {
     info "Setting up user environment..."
     arch-chroot /mnt /bin/bash <<EOF
     # Install AUR helper
-    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    sudo -u ${CONFIG[USERNAME]} makepkg -si --noconfirm
+    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/paru.git
+    cd paru
+    sudo -u ${CONFIG[USERNAME]} makepkg -si
 
     # Install development packages
     pacman -Sy --needed --noconfirm \
@@ -271,14 +294,13 @@ setup_user_environment() {
         python-scipy \
         python-matplotlib \
         python-scikit-learn \
-        torchvision \
         zram-generator \
         thermald ananicy-cpp \
         gstreamer-vaapi ffmpeg \
         bluez bluez-utils
 
     # Install user applications via yay
-    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
+    sudo -u ${CONFIG[USERNAME]} paru -S --needed \
         brave-bin \
         zoom \
         android-ndk \
@@ -338,7 +360,7 @@ main() {
     apply_optimizations
     setup_user_environment
     configure_services
-    
+
     umount -R /mnt
 
     success "Installation completed! You can now reboot your system."
