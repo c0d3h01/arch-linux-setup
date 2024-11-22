@@ -151,9 +151,9 @@ install_base_system() {
         nodejs npm git-lfs
 
         # Performance tools
-        zram-generator power-profiles-daemon
-        thermald ananicy-cpp gamemode
-        corectrl acpid lm_sensors
+        zram-generator
+        thermald ananicy-cpp
+        acpid lm_sensors
         nvme-cli powertop s-tui
 
         # Multimedia
@@ -338,6 +338,104 @@ SYS
 EOF
 }
 
+setup_user_environment() {
+    echo "Setting up user environment..."
+    arch-chroot /mnt /bin/bash <<EOF
+
+    # Install yay
+    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    sudo -u ${CONFIG[USERNAME]} makepkg -si
+    cd ..
+    rm -rf ./yay-bin
+
+    # Install base development packages
+    pacman -Sy --needed --noconfirm \
+        nodejs npm \
+        virt-manager \
+        qemu-desktop \
+        libvirt \
+        edk2-ovmf \
+        dnsmasq \
+        vde2 \
+        bridge-utils \
+        iptables-nft \
+        dmidecode \
+        xclip \
+        rocm-hip-sdk \
+        rocm-opencl-sdk \
+        python \
+        python-pip \
+        python-numpy \
+        python-pandas \
+        python-scipy \
+        python-matplotlib \
+        python-scikit-learn \
+        torchvision
+        
+    # Install regular packages via yay
+    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
+        brave-bin \
+        zoom \
+        android-ndk \
+        android-tools \
+        android-sdk \
+        android-studio \
+        openjdk-src \
+        postman-bin \
+        flutter \
+        youtube-music-bin \
+        notion-app-electron \
+        zed \
+        gparted \
+        filelight \
+        kdeconnect \
+        ufw-extras linutil-bin paru-bin fastfetch nerdfetch \
+        docker \
+        tor-browser-bin
+
+    # Install packages with --nodeps
+    sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm --nodeps \
+        telegram-desktop-bin \
+        github-desktop-bin \
+        visual-studio-code-bin \
+        ferdium-bin \
+        vesktop-bin \
+        onlyoffice-bin
+
+    # Configure Android SDK
+    echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> /home/${CONFIG[USERNAME]}/.bashrc
+    echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> /home/${CONFIG[USERNAME]}/.bashrc
+    chown ${CONFIG[USERNAME]}:${CONFIG[USERNAME]} /home/${CONFIG[USERNAME]}/.bashrc
+EOF
+}
+
+configure_services() {
+    echo "Configuring and enabling services..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Enable system services
+    systemctl enable thermald
+    systemctl enable NetworkManager
+    systemctl enable bluetooth
+    systemctl enable docker
+    systemctl enable systemd-zram-setup@zram0.service
+    systemctl enable fstrim.timer
+    systemctl enable ufw
+    systemctl enable libvirtd.service
+
+    # Configure firewall
+    ufw enable
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow http
+    ufw allow https
+    ufw allow 1714:1764/udp
+    ufw allow 1714:1764/tcp
+    ufw logging on
+EOF
+}
+
 # ==============================================================================
 # Main Execution
 # ==============================================================================
@@ -353,7 +451,9 @@ main() {
     install_base_system
     configure_system
     apply_optimizations
-
+    setup_user_environment
+    configure_services
+    
     umount -R /mnt
 
     success "Installation completed! You can now reboot your system."
