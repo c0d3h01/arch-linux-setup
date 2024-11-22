@@ -359,13 +359,10 @@ setup_user_environment() {
         dnsmasq \
         vde2 \
         bridge-utils \
-        iptables-nft \
         dmidecode \
         xclip \
         rocm-hip-sdk \
         rocm-opencl-sdk \
-        python \
-        python-pip \
         python-numpy \
         python-pandas \
         python-scipy \
