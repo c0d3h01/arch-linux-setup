@@ -222,6 +222,7 @@ apply_optimizations() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
 
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+[zram0]
 zram-size = 8192
 compression-algorithm = zstd
 max-comp-streams = 8
@@ -231,9 +232,6 @@ device-type = swap
 ZRAMCONF
 
     cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'SYS'
-# sched: RT throttling activated
-kernel.sched_rt_runtime_us=-1
-
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 # A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
 # and a value of 100 means IO cost is assumed to be equal.
