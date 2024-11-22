@@ -13,11 +13,11 @@ set -e
 declare -A CONFIG
 
 # Color codes for pretty output
-declare -r RED='\033[0;31m'
-declare -r GREEN='\033[0;32m'
-declare -r YELLOW='\033[1;33m'
-declare -r BLUE='\033[0;34m'
-declare -r NC='\033[0m' # No Color
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
 # ==============================================================================
 # Utility Functions
@@ -66,7 +66,7 @@ init_config() {
 # ==============================================================================
 
 setup_disk() {
-    echo "Preparing disk partitions..."
+    info "Preparing disk partitions..."
 
     # Safety check
     read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
@@ -94,7 +94,7 @@ setup_disk() {
 }
 
 setup_filesystems() {
-    echo "Setting up filesystems..."
+    info "Setting up filesystems..."
 
     # Format partitions
     mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
@@ -127,47 +127,32 @@ setup_filesystems() {
 }
 
 install_base_system() {
-    echo "Installing base system..."
+    info "Installing base system..."
 
     local packages=(
         # Base system
         base base-devel linux linux-headers linux-firmware
-
         # Filesystem
         btrfs-progs
-
         # AMD-specific
         amd-ucode xf86-video-amdgpu
         vulkan-radeon vulkan-tools
         libva-mesa-driver mesa-vdpau mesa
         vulkan-icd-loader libva-utils
         vdpauinfo radeontop
-
         # System utilities
         networkmanager grub efibootmgr
         neovim glances git nano sudo
         gcc gdb cmake make
         python python-pip
         nodejs npm git-lfs
-
-        # Performance tools
-        zram-generator
-        thermald ananicy-cpp
-        acpid lm_sensors
-        nvme-cli powertop s-tui
-
-        # Multimedia
-        gstreamer-vaapi ffmpeg
-
-        # Bluetooth
-        bluez bluez-utils
-    )
+)
 
     pacstrap /mnt "${packages[@]}" || error "Failed to install base packages"
 }
 
 configure_system() {
-    echo "Configuring system..."
+    info "Configuring system..."
 
     # Generate fstab
     genfstab -U /mnt >>/mnt/etc/fstab
@@ -214,15 +199,14 @@ EOF
 }
 
 apply_optimizations() {
-    echo "Applying system optimizations..."
+    info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     
-    echo "Configuring pacman..."
+    info "Configuring pacman..."
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
 
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
-[zram0]
 zram-size = 8192
 compression-algorithm = zstd
 max-comp-streams = 8
@@ -232,6 +216,9 @@ device-type = swap
 ZRAMCONF
 
     cat > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'SYS'
+# sched: RT throttling activated
+kernel.sched_rt_runtime_us=-1
+
 # The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
 # A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
 # and a value of 100 means IO cost is assumed to be equal.
@@ -337,15 +324,13 @@ EOF
 }
 
 setup_user_environment() {
-    echo "Setting up user environment..."
+    info "Setting up user environment..."
     arch-chroot /mnt /bin/bash <<EOF
 
     # Install yay
     sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
     sudo -u ${CONFIG[USERNAME]} makepkg -si
-    cd ..
-    rm -rf ./yay-bin
 
     # Install base development packages
     pacman -Sy --needed --noconfirm \
@@ -366,7 +351,12 @@ setup_user_environment() {
         python-scipy \
         python-matplotlib \
         python-scikit-learn \
-        torchvision
+        torchvision \
+        zram-generator \
+        thermald ananicy-cpp \
+        gstreamer-vaapi ffmpeg \
+        bluez bluez-utils
+
         
     # Install regular packages via yay
     sudo -u ${CONFIG[USERNAME]} yay -Sy --needed --noconfirm \
@@ -406,7 +396,7 @@ EOF
 }
 
 configure_services() {
-    echo "Configuring and enabling services..."
+    info "Configuring and enabling services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
     systemctl enable thermald
@@ -436,7 +426,7 @@ EOF
 # ==============================================================================
 
 main() {
-    echo "Starting Arch Linux installation script..."
+    info "Starting Arch Linux installation script..."
 
     init_config
 
