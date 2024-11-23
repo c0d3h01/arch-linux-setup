@@ -1,5 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
+set -x
 
 # ==============================================================================
 # Arch Linux Installation Script
@@ -12,6 +13,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
+sed -i 's/^#DisableDownloadTimeout/DisableDownloadTimeout' /etc/pacman.conf
+
 # Configuration function
 init_config() {
     declare -A CONFIG=(
@@ -22,7 +26,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,space_cache=v2,commit=120"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:2,space_cache=v2,commit=120,autodefrag"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -53,7 +57,7 @@ setup_disk() {
     sgdisk --set-alignment=8 "${CONFIG[DRIVE]}"
 
     # Create partitions
-    sgdisk --new=1:0:+2G \
+    sgdisk --new=1:0:+1G \
         --typecode=1:ef00 \
         --change-name=1:"EFI" \
         --new=2:0:0 \
@@ -104,23 +108,54 @@ setup_filesystems() {
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
+
     local base_packages=(
-        # Base system
+        # Core System
         base base-devel linux linux-headers linux-firmware
-        # Filesystem
-        btrfs-progs
-        # AMD-specific
-        amd-ucode xf86-video-amdgpu
+
+        # CPU & GPU Drivers
+        amd-ucode
+        xf86-video-amdgpu
         vulkan-radeon vulkan-tools
         libva-mesa-driver mesa-vdpau mesa
         vulkan-icd-loader libva-utils
         vdpauinfo radeontop
-        # System utilities
-        networkmanager grub efibootmgr
-        neovim glances git nano sudo
-        gcc gdb cmake make mtools
+        os-prober mesa e2fsprogs dosfstools ntfs-3g
+
+        # Graphics Extensions
+        lib32-mesa
+        lib32-vulkan-radeon
+        mesa-vdpau
+        lib32-mesa-vdpau
+
+        # Essential System Utilities
+        networkmanager
+        grub
+        efibootmgr
+        btrfs-progs
+        mtools
+        snapper
+
+        # Development Tools
+        gcc gdb cmake make clang
         python python-pip
         nodejs npm git-lfs
+
+        # System Performance
+        zram-generator
+        thermald
+        ananicy-cpp
+
+        # Multimedia & Bluetooth
+        gstreamer-vaapi
+        ffmpeg
+        bluez
+        bluez-utils
+        pipewire
+        pipewire-alsa
+        pipewire-jack
+        pipewire-pulse
+        wireplumber
     )
 
     pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
@@ -184,7 +219,7 @@ apply_optimizations() {
     arch-chroot /mnt /bin/bash <<EOF
     
     # Pacman optimization
-    sed -i 's/^#ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i 's/^ILoveCandy/' /etc/pacman.conf
     sed -i 's/^#DisableDownloadTimeout/DisableDownloadTimeout' /etc/pacman.conf
@@ -262,61 +297,41 @@ fs.inotify.max_user_watches = 524288
 fs.file-max = 2097152
 fs.xfs.xfssyncd_centisecs = 10000
 
-kernel.sched_rt_runtime_us=-1SYS
-EOF
-}
+kernel.sched_rt_runtime_us=-1
+SYS
 
-# User environment setup function
-setup_user_environment() {
-    info "Setting up user environment..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Install AUR helper
-    sudo -u ${CONFIG[USERNAME]} git clone https://aur.archlinux.org/paru.git
-    cd paru
-    sudo -u ${CONFIG[USERNAME]} makepkg -si
+mkdir -p /etc/ananicy.d/
 
-    # Install development packages
-    pacman -Sy --needed --noconfirm \
-        nodejs npm \
-        virt-manager \
-        qemu-desktop \
-        libvirt \
-        edk2-ovmf \
-        dnsmasq \
-        vde2 \
-        bridge-utils \
-        dmidecode \
-        xclip \
-        rocm-hip-sdk \
-        rocm-opencl-sdk \
-        python-numpy \
-        python-pandas \
-        python-scipy \
-        python-matplotlib \
-        python-scikit-learn \
-        zram-generator \
-        thermald ananicy-cpp \
-        gstreamer-vaapi ffmpeg \
-        bluez bluez-utils
+cat > "/etc/ananicy.d/ananicy.conf" <<'ANA'
+## Ananicy 2.X configuration
+# Ananicy run full system scan every "check_freq" seconds
+# supported values 0.01..86400
+# values which have sense: 1..60
+check_freq = 15
 
-    # Install user applications via yay
-    sudo -u ${CONFIG[USERNAME]} paru -S --needed \
-        brave-bin \
-        zoom \
-        android-ndk \
-        android-tools \
-        android-sdk \
-        android-studio \
-        postman-bin \
-        flutter \
-        youtube-music-bin \
-        notion-app-electron \
-        zed
+# Disables functionality
+cgroup_load = true
+type_load = true
+rule_load = true
 
-    # Configure Android SDK
-    echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "/home/${CONFIG[USERNAME]}/.bashrc"
-    echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "/home/${CONFIG[USERNAME]}/.bashrc"
-    chown ${CONFIG[USERNAME]}:${CONFIG[USERNAME]} "/home/${CONFIG[USERNAME]}/.bashrc"
+apply_nice = true
+apply_latnice = true
+apply_ionice = true
+apply_sched = true
+apply_oom_score_adj = true
+apply_cgroup = true
+
+# Loglevel
+# supported values: trace, debug, info, warn, error, critical
+loglevel = info
+
+# If enabled it does log task name after rule matched and got applied to the task
+log_applied_rule = false
+
+# It tries to move realtime task to root cgroup to be able to move it to the ananicy-cpp controlled one
+# NOTE: may introduce issues, for example with polkit
+cgroup_realtime_workaround = false
+ANA
 EOF
 }
 
@@ -325,25 +340,28 @@ configure_services() {
     info "Configuring services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
-    systemctl enable thermald
-    systemctl enable NetworkManager
-    systemctl enable bluetooth
+    systemctl enable thermald.service
+    systemctl enable NetworkManager.service
+    systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer
-    systemctl enable docker
-    systemctl enable ufw
+    systemctl enable fstrim.timer.service
+    systemctl enable ananicy-cpp.service
 
-    # Configure firewall
-    ufw enable
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow ssh
-    ufw allow http
-    ufw allow https
-    ufw allow 1714:1764/udp
-    ufw allow 1714:1764/tcp
-    ufw logging on
 EOF
+}
+
+desktop_install() {
+    # Desktop Environment GNOME
+    pacman -S --needed --noconfirm \
+        wayland \
+        xorg-server \
+        xorg-xwayland \
+        gnome \
+        gnome-tweaks \
+        gnome-terminal \
+        gnome-software
+
+    systemctl enable gdm
 }
 
 # Main execution function
@@ -358,7 +376,6 @@ main() {
     install_base_system
     configure_system
     apply_optimizations
-    setup_user_environment
     configure_services
 
     umount -R /mnt
