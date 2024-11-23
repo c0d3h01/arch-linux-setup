@@ -247,6 +247,7 @@ NVID
 
     # ZRAM configuration
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+[zram0]
 zram-size = 8192
 compression-algorithm = zstd
 max-comp-streams = 8
