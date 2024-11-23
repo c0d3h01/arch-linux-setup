@@ -343,15 +343,15 @@ configure_services() {
     systemctl enable NetworkManager.service
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer.service
+    systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
-
 EOF
 }
 
 desktop_install() {
+arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
-    pacman -S --needed --noconfirm \
+    pacman -Sy --needed --noconfirm \
         wayland \
         xorg-server \
         xorg-xwayland \
@@ -359,8 +359,8 @@ desktop_install() {
         gnome-tweaks \
         gnome-terminal \
         gnome-software
-
     systemctl enable gdm
+EOF
 }
 
 # Main execution function
@@ -376,6 +376,7 @@ main() {
     configure_system
     apply_optimizations
     configure_services
+    desktop_install
 
     umount -R /mnt
 
