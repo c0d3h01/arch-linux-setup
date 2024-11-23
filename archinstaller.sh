@@ -220,8 +220,8 @@ apply_optimizations() {
     # Pacman optimization
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
-    sed -i 's/^ILoveCandy/' /etc/pacman.conf
-    sed -i 's/^#DisableDownloadTimeout/DisableDownloadTimeout' /etc/pacman.conf
+    echo "ILoveCandy" >> /etc/pacman.conf
+    echo "DisableDownloadTimeout" >> /etc/pacman.conf
 
     cat > "usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IO'
 # HDD
@@ -248,12 +248,11 @@ NVID
     # ZRAM configuration
     cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
-zram-size = 8192
+zram-size = ram
 compression-algorithm = zstd
-max-comp-streams = 8
-writeback = 0
-priority = 32767
-device-type = swap
+max-comp-streams = auto
+swap-priority = 100
+fs-type = swap
 ZRAMCONF
 
     cat > "usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
