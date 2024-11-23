@@ -133,7 +133,7 @@ install_base_system() {
         efibootmgr
         btrfs-progs
         mtools
-        snapper
+        snapper nano neovim
 
         # Development Tools
         gcc gdb cmake make clang
