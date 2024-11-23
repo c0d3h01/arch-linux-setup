@@ -13,12 +13,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' "/etc/pacman.conf"
-sed -i 's/^#DisableDownloadTimeout/DisableDownloadTimeout' /etc/pacman.conf
+declare -A CONFIG
 
 # Configuration function
 init_config() {
-    declare -A CONFIG=(
+    CONFIG=(
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
