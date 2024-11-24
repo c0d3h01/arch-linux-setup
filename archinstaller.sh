@@ -337,8 +337,6 @@ configure_services() {
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
-    systemctl enable cosmic-daemon
-    systemctl enable pipewire-pulse
     systemctl enable cups
 EOF
 }
@@ -358,25 +356,17 @@ desktop_install() {
 # EOF
 
 arch-chroot /mnt /bin/bash <<EOF
-    # Add System76 repository to pacman.conf
-    echo -e "\n[system76]\nServer = https://arch.system76.com/\$arch/" >> /etc/pacman.conf
-
-    # Import and sign System76 GPG key
-    pacman-key --recv-keys 63092E4B5604EDAE
-    pacman-key --lsign-key 63092E4B5604EDAE
-
     # Update package database
     pacman -Sy
 
-    # Install Cosmic Desktop and essential packages
+    # Install Cosmic Desktop
     pacman -S --needed --noconfirm \
         cosmic \
         alacritty \
         cups \
         system-config-printer \
         flatpak \
-        gnome-keyring \
-        power-profiles-daemon
+        gnome-keyring
 EOF
 }
 
@@ -392,8 +382,8 @@ main() {
     install_base_system
     configure_system
     apply_optimizations
-    configure_services
     desktop_install
+    configure_services
 
     umount -R /mnt
 
