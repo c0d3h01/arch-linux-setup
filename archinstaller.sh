@@ -138,9 +138,9 @@ install_base_system() {
         snapper nano neovim
 
         # Development Tools
-        gcc gdb cmake make clang
+        gcc gdb cmake clang
         python python-pip
-        nodejs npm git-lfs
+        nodejs npm
 
         # System Performance
         zram-generator
@@ -219,36 +219,13 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     
-    # Pacman optimization
+# Pacman optimization
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
-    echo "ILoveCandy" >> /etc/pacman.conf
-    echo "DisableDownloadTimeout" >> /etc/pacman.conf
+    sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
 
-    cat > "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IO'
-# HDD
-ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", \
-    ATTR{queue/scheduler}="bfq"
-
-# SSD
-ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", \
-    ATTR{queue/scheduler}="mq-deadline"
-
-# NVMe SSD
-ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
-    ATTR{queue/scheduler}="none"
-IO
-
-    cat > "/usr/lib/modprobe.d/nvidia.conf" <<'NVID'
-options nvidia NVreg_UsePageAttributeTable=1 \
-    NVreg_InitializeSystemMemoryAllocations=0 \
-    NVreg_DynamicPowerManagement=0x02 \
-    NVreg_EnableGpuFirmware=0
-options nvidia_drm modeset=1 fbdev=1
-NVID
-
-    # ZRAM configuration
-    cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+# ZRAM configuration
+cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
 zram-size = ram
 compression-algorithm = zstd
@@ -257,7 +234,7 @@ swap-priority = 100
 fs-type = swap
 ZRAMCONF
 
-    cat > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
+cat > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
 ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
   RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
 
@@ -269,42 +246,57 @@ LABEL="zram_end"
 ZRULES
 
     # Advanced kernel tuning
-    cat > "/etc/sysctl.d/99-kernel-optimization.conf" <<'SYS'
-vm.swappiness = 100
-vm.vfs_cache_pressure=50
-vm.dirty_bytes = 268435456
+cat > "/etc/sysctl.d/99-kernel-optimization.conf" <<'SYS'
+# VM settings optimized for 8GB RAM and desktop use
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
+vm.dirty_ratio = 3
+vm.dirty_bytes = 134217728
 vm.page-cluster = 0
-vm.dirty_background_bytes = 134217728
+vm.dirty_background_bytes = 67108864
 vm.dirty_expire_centisecs = 3000
 vm.dirty_writeback_centisecs = 1500
 
+# Kernel settings
 kernel.nmi_watchdog = 0
 kernel.unprivileged_userns_clone = 1
 kernel.printk = 3 3 3 3
 kernel.kptr_restrict = 2
 kernel.kexec_load_disabled = 1
+kernel.sched_rt_runtime_us = -1
 
+# AMD CPU specific optimizations
+kernel.sched_autogroup_enabled = 1
+kernel.sched_cfs_bandwidth_slice_us = 500
+
+# File system settings
 fs.inotify.max_user_watches = 524288
 fs.file-max = 2097152
-fs.xfs.xfssyncd_centisecs = 10000
 
-kernel.sched_rt_runtime_us=-1
+# Network optimizations for desktop use
+net.core.netdev_max_backlog = 16384
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_max_syn_backlog = 8192
+net.core.somaxconn = 8192
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# IOMMU settings for AMD
+kernel.perf_event_max_sample_rate = 100000
+kernel.perf_cpu_time_max_percent = 25
 SYS
 
 mkdir -p /etc/ananicy.d/
 
 cat > "/etc/ananicy.d/ananicy.conf" <<'ANA'
-## Ananicy 2.X configuration
-# Ananicy run full system scan every "check_freq" seconds
-# supported values 0.01..86400
-# values which have sense: 1..60
-check_freq = 15
+# More frequent checks for faster response
+check_freq = 10  
 
-# Disables functionality
+# Core functionality
 cgroup_load = true
 type_load = true
 rule_load = true
 
+# All optimizations enabled
 apply_nice = true
 apply_latnice = true
 apply_ionice = true
@@ -312,17 +304,66 @@ apply_sched = true
 apply_oom_score_adj = true
 apply_cgroup = true
 
-# Loglevel
-# supported values: trace, debug, info, warn, error, critical
-loglevel = info
-
-# If enabled it does log task name after rule matched and got applied to the task
+# Minimal logging for better performance
+loglevel = warn
 log_applied_rule = false
-
-# It tries to move realtime task to root cgroup to be able to move it to the ananicy-cpp controlled one
-# NOTE: may introduce issues, for example with polkit
-cgroup_realtime_workaround = false
+cgroup_realtime_workaround = true
 ANA
+
+# Now let's create optimized rules
+cat > "/etc/ananicy.d/00-desktop.rules" <<'RULES'
+# GNOME Desktop Environment
+{ "name": "gnome-shell", "type": "de", "nice": -5, "sched": "other", "ioclass": "realtime", "ionice": 1 }
+{ "name": "mutter", "type": "de", "nice": -5, "sched": "other", "ioclass": "realtime", "ionice": 1 }
+{ "name": "gnome-session-binary", "type": "de", "nice": -3 }
+
+# System UI responsiveness
+{ "name": "pipewire", "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
+{ "name": "wireplumber", "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
+
+# Browsers for fast web response
+{ "name": "brave", "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
+{ "name": "WebContent", "type": "browser", "nice": -1, "ioclass": "best-effort", "ionice": 5 }
+{ "name": "chromium", "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
+
+# System services
+{ "name": "systemd", "type": "system", "nice": -5 }
+{ "name": "systemd-*", "type": "system", "nice": -5 }
+{ "name": "dbus-daemon", "type": "system", "nice": -4 }
+
+# GPU related
+{ "name": "glxgears", "type": "gpu", "nice": -10 }
+{ "name": "vulkan*", "type": "gpu", "nice": -10 }
+{ "name": "vkBasalt", "type": "gpu", "nice": -10 }
+
+# Video/Media
+{ "name": "ffmpeg", "type": "video-transcoding", "nice": 0, "ioclass": "best-effort", "ionice": 4 }
+{ "name": "gstreamer*", "type": "video-transcoding", "nice": 0, "ioclass": "best-effort" }
+
+# Games and real-time applications
+{ "name": "*steam*", "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
+{ "name": "gamescope", "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
+{ "name": "mangohud", "type": "game", "nice": -5 }
+
+# Background tasks - lower priority
+{ "name": "packagekitd", "type": "package-manager", "nice": 10, "ioclass": "idle" }
+{ "name": "pacman", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
+{ "name": "yay", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
+{ "name": "paru", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
+RULES
+
+# Add schedulers types
+cat > "/etc/ananicy.d/00-types.types" <<'TYPES'
+# Types configuration
+{ "type": "de", "nice": -5, "sched": "other", "ioclass": "best-effort", "ionice": 3 }
+{ "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
+{ "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
+{ "type": "system", "nice": -5 }
+{ "type": "gpu", "nice": -10 }
+{ "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
+{ "type": "video-transcoding", "nice": 0, "ioclass": "best-effort", "ionice": 4 }
+{ "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
+TYPES
 EOF
 }
 
@@ -343,7 +384,7 @@ EOF
 }
 
 desktop_install() {
-arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
     pacman -Sy --needed --noconfirm \
         wayland \
@@ -359,10 +400,8 @@ arch-chroot /mnt /bin/bash <<EOF
 EOF
 }
 
-# Main execution function
-main() {
+archinstall() {
     info "Starting Arch Linux installation script..."
-
     init_config
 
     # Main installation steps
@@ -373,11 +412,121 @@ main() {
     apply_optimizations
     desktop_install
     configure_services
-
     umount -R /mnt
-
     success "Installation completed! You can now reboot your system."
 }
+
+# User environment setup function
+usrsetup() {
+    arch-chroot /mnt /bin/bash <<EOF
+    # Install AUR helper
+    cd tmp
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    makepkg -si
+
+    # Install development packages, utilitys
+    sudo pacman -S --needed \
+        nodejs npm \
+        virt-manager \
+        qemu-full \
+        iptables \
+        libvirt \
+        edk2-ovmf \
+        dnsmasq \
+        bridge-utils \
+        vde2 \
+        dmidecode \
+        xclip \
+        rocm-hip-sdk \
+        rocm-opencl-sdk \
+        python-numpy \
+        python-pandas \
+        python-scipy \
+        python-matplotlib \
+        python-scikit-learn \
+        flatpak ufw-extras \
+        rust \
+        ninja
+
+    # Install user applications via yay
+    yay -S --needed \
+        brave-bin \
+        telegram-desktop-bin \
+        onlyoffice-bin \
+        tor-browser-bin \
+        vesktop-bin \
+        zoom \
+        docker \
+        docker-compose \
+        android-ndk \
+        android-tools \
+        android-sdk \
+        android-studio \
+        postman-bin \
+        flutter \
+        youtube-music-bin \
+        notion-app-electron \
+        zed
+
+    # Configure firewall
+    sudo ufw enable
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow ssh
+    sudo ufw allow http
+    sudo ufw allow https
+    sudo ufw allow 1714:1764/udp
+    sudo ufw allow 1714:1764/tcp
+    sudo ufw logging on
+    systemctl enable docker
+    systemctl enable ufw
+
+    # Configure Android SDK
+    echo "export ANDROID_HOME=$HOME/Android/Sdk" >>"/home/c0d3h01/.bashrc"
+    echo "export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools" >>"/home/c0d3h01/.bashrc"
+    echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >>"/home/c0d3h01/.bashrc"
+    echo "export PATH=$PATH:$ANDROID_NDK_ROOT" >>"/home/c0d3h01/.bashrc"
+EOF
+}
+
+# Main execution function
+main() {
+        case "$1" in
+        "--install"|"-i")
+            archinstall
+            ;;
+        "--setup"|"-s")
+            usrsetup
+            ;;
+        "--help"|"-h")
+            show_help
+            ;;
+        "")
+            echo "Error: No arguments provided"
+            show_help
+            exit 1
+            ;;
+        *)
+            echo "Error: Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+
+}
+
+show_help() {
+    cat << EOF
+Usage: $(basename "$0") [OPTION]
+
+Options:
+    -i, --install    Run Arch Linux installation
+    -s, --setup      Setup user configuration
+    -h, --help       Display this help message
+EOF
+}
+
 
 # Execute main function
 main "$@"
