@@ -12,10 +12,11 @@ main() {
     makepkg -si
 
     # Install development packages, utilitys
-    sudo pacman -S --needed --noconfirm \
+    sudo pacman -S --needed \
         nodejs npm \
         virt-manager \
         qemu-full \
+        iptables \
         libvirt \
         edk2-ovmf \
         dnsmasq \
