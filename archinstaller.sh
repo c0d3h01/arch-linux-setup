@@ -25,7 +25,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:2,space_cache=v2,commit=120,autodefrag"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,compress-force=zstd,space_cache=v2,commit=120,discard=async,autodefrag,clear_cache,ssd,nodiratime"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -46,7 +46,7 @@ setup_disk() {
     info "Preparing disk partitions..."
 
     # Safety check
-    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) " -n 1 -r
+    read -p "${RED}WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) ${NC}" -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
@@ -82,7 +82,7 @@ setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
     pushd /mnt >/dev/null
 
-    local subvolumes=("@" "@home" "@cache" "@log" "@pkg" "@.snapshots")
+    local subvolumes=("@" "@home" "@cache" "@srv" "@tmp" "@log" "@pkg" "@.snapshots")
     for subvol in "${subvolumes[@]}"; do
         btrfs subvolume create "$subvol"
     done
@@ -94,13 +94,15 @@ setup_filesystems() {
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create mount points
-    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
+    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi,tmp,srv}
 
     # Mount other subvolumes
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@pkg" "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@.snapshots" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
@@ -110,7 +112,7 @@ install_base_system() {
 
     local base_packages=(
         # Core System
-        base base-devel linux linux-headers linux-firmware
+        base base-devel linux-lts linux-lts-docs linux-headers linux-firmware
 
         # CPU & GPU Drivers
         amd-ucode
@@ -282,16 +284,6 @@ kernel.printk = 3 3 3 3
 kernel.kptr_restrict = 2
 kernel.kexec_load_disabled = 1
 
-net.core.somaxconn = 8192
-net.ipv4.tcp_fastopen = 3
-net.ipv4.tcp_congestion_control = bbr
-net.ipv4.tcp_syncookies = 1
-net.ipv4.tcp_ecn = 1
-net.ipv4.tcp_timestamps = 0
-net.core.netdev_max_backlog = 16384
-net.ipv4.tcp_slow_start_after_idle = 0
-net.ipv4.tcp_rfc1337 = 1
-
 fs.inotify.max_user_watches = 524288
 fs.file-max = 2097152
 fs.xfs.xfssyncd_centisecs = 10000
@@ -339,27 +331,52 @@ configure_services() {
     info "Configuring services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
-    systemctl enable thermald.service
-    systemctl enable NetworkManager.service
+    systemctl enable thermald
+    systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
+    systemctl enable cosmic-daemon
+    systemctl enable pipewire-pulse
+    systemctl enable cups
 EOF
 }
 
 desktop_install() {
+# arch-chroot /mnt /bin/bash <<EOF
+#     # Desktop Environment GNOME
+#     pacman -Sy --needed --noconfirm \
+#         wayland \
+#         xorg-server \
+#         xorg-xwayland \
+#         gnome \
+#         gnome-tweaks \
+#         gnome-terminal \
+#         gnome-software
+#     systemctl enable gdm
+# EOF
+
 arch-chroot /mnt /bin/bash <<EOF
-    # Desktop Environment GNOME
-    pacman -Sy --needed --noconfirm \
-        wayland \
-        xorg-server \
-        xorg-xwayland \
-        gnome \
-        gnome-tweaks \
-        gnome-terminal \
-        gnome-software
-    systemctl enable gdm
+    # Add System76 repository to pacman.conf
+    echo -e "\n[system76]\nServer = https://arch.system76.com/\$arch/" >> /etc/pacman.conf
+
+    # Import and sign System76 GPG key
+    pacman-key --recv-keys 63092E4B5604EDAE
+    pacman-key --lsign-key 63092E4B5604EDAE
+
+    # Update package database
+    pacman -Sy
+
+    # Install Cosmic Desktop and essential packages
+    pacman -S --needed --noconfirm \
+        cosmic \
+        alacritty \
+        cups \
+        system-config-printer \
+        flatpak \
+        gnome-keyring \
+        power-profiles-daemon
 EOF
 }
 
