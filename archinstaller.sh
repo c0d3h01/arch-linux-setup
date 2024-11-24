@@ -5,7 +5,7 @@
 
 set -e
 set -x
-exec > >(tee -i arch_install.log) 2>&1
+#exec > >(tee -i arch_install.log) 2>&1
 
 # ==============================================================================
 # Arch Linux Installation Script
@@ -508,8 +508,6 @@ EOF
 
 # Main execution function
 main() {
-    init_config
-
     case "$1" in
     "--install" | "-i")
         archinstall
