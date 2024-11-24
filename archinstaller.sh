@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2129
+# shellcheck disable=SC2024
+# shellcheck disable=SC2162
+
 set -e
 set -x
 exec > >(tee -i arch_install.log) 2>&1
+
 # ==============================================================================
 # Arch Linux Installation Script
 # ==============================================================================
@@ -119,6 +124,40 @@ setup_filesystems() {
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
+setup_cachyos_repo() {
+    info "Setting up CachyOS repository..."
+    
+    arch-chroot /mnt /bin/bash <<EOF
+    # Add keys
+    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key F3B607488DB35A47
+
+    # Install CachyOS packages
+    pacman -U --noconfirm \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
+
+    # Add CachyOS repositories to pacman.conf
+    cat >> /etc/pacman.conf <<'CONF'
+# CachyOS repositories
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-core-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-extra-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+CONF
+
+    # Update package database
+    pacman -Sy
+EOF
+}
+
+
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
@@ -126,7 +165,7 @@ install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-lts linux-headers
+        linux-cachyos-autofdo linux-cachyos-autofdo-headers
         linux-firmware
 
         # CPU & GPU Drivers
@@ -363,14 +402,9 @@ desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
     pacman -Sy --needed --noconfirm \
-        wayland \
-        xorg-server \
-        xorg-xwayland \
-        gnome \
-        gnome-tweaks \
+        gnome gnome-tweaks \
         gnome-terminal \
-        alacritty \
-        cups
+        alacritty cups
         
     systemctl enable gdm
 EOF
@@ -383,6 +417,7 @@ archinstall() {
     # Main installation steps
     setup_disk
     setup_filesystems
+    setup_cachyos_repo
     install_base_system
     configure_system
     apply_optimizations
@@ -394,14 +429,6 @@ archinstall() {
 
 # User environment setup function
 usrsetup() {
-    arch-chroot /mnt /bin/bash <<EOF
-    # Install AUR helper
-    cd tmp
-    git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    makepkg -si
-
-    # Install development packages, utilitys
     sudo pacman -S --needed \
         nodejs npm \
         virt-manager \
@@ -420,8 +447,27 @@ usrsetup() {
         flatpak ufw-extras \
         ninja gcc gdb cmake clang
 
+    # Configure firewall
+    sudo ufw enable
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow ssh
+    sudo ufw allow http
+    sudo ufw allow https
+    sudo ufw allow 1714:1764/udp
+    sudo ufw allow 1714:1764/tcp
+    sudo ufw logging on
+    
+    # Enable services
+    sudo systemctl enable docker
+    sudo systemctl enable ufw
+
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    makepkg -si
+
     # Install user applications via yay
-    yay -S --needed \
+    sudo yay -S --needed \
         brave-bin \
         telegram-desktop-bin \
         onlyoffice-bin \
@@ -438,25 +484,11 @@ usrsetup() {
         notion-app-electron \
         zed
 
-    # Configure firewall
-    sudo ufw enable
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow http
-    sudo ufw allow https
-    sudo ufw allow 1714:1764/udp
-    sudo ufw allow 1714:1764/tcp
-    sudo ufw logging on
-    systemctl enable docker
-    systemctl enable ufw
-
     # Configure Android SDK
-    echo "export ANDROID_HOME=$HOME/Android/Sdk" >>"/home/c0d3h01/.bashrc"
-    echo "export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools" >>"/home/c0d3h01/.bashrc"
-    echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >>"/home/c0d3h01/.bashrc"
-    echo "export PATH=$PATH:$ANDROID_NDK_ROOT" >>"/home/c0d3h01/.bashrc"
-EOF
+    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "\$HOME/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "\$HOME/.bashrc"
+    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >> "\$HOME/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >> "\$HOME/.bashrc"
 }
 
 # Services configuration function
