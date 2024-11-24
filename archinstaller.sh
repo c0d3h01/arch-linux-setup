@@ -338,6 +338,7 @@ configure_services() {
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
+    systemctl enable lightdm
 EOF
 }
 
@@ -366,7 +367,8 @@ arch-chroot /mnt /bin/bash <<EOF
         cups \
         system-config-printer \
         flatpak \
-        gnome-keyring
+        gnome-keyring \
+        lightdm
 EOF
 }
 
