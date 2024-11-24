@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 set -x
-
+exec > >(tee -i arch_install.log) 2>&1
 # ==============================================================================
 # Arch Linux Installation Script
 # ==============================================================================
@@ -17,11 +17,24 @@ declare -A CONFIG
 
 # Configuration function
 init_config() {
+    
+    while true; do
+        read -s -p "Enter a single password for root and user: " PASSWORD
+        echo
+        read -s -p "Confirm the password: " CONFIRM_PASSWORD
+        echo
+        if [ "$PASSWORD" = "$CONFIRM_PASSWORD" ]; then
+            break
+        else
+            echo "Passwords do not match. Try again."
+        fi
+    done
+
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="archlinux"
         [USERNAME]="c0d3h01"
-        [PASSWORD]="1981"
+        [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
@@ -492,32 +505,32 @@ EOF
 
 # Main execution function
 main() {
-        case "$1" in
-        "--install"|"-i")
-            archinstall
-            ;;
-        "--setup"|"-s")
-            usrsetup
-            ;;
-        "--help"|"-h")
-            show_help
-            ;;
-        "")
-            echo "Error: No arguments provided"
-            show_help
-            exit 1
-            ;;
-        *)
-            echo "Error: Unknown option: $1"
-            show_help
-            exit 1
-            ;;
+    case "$1" in
+    "--install" | "-i")
+        archinstall
+        ;;
+    "--setup" | "-s")
+        usrsetup
+        ;;
+    "--help" | "-h")
+        show_help
+        ;;
+    "")
+        echo "Error: No arguments provided"
+        show_help
+        exit 1
+        ;;
+    *)
+        echo "Error: Unknown option: $1"
+        show_help
+        exit 1
+        ;;
     esac
 
 }
 
 show_help() {
-    cat << EOF
+    cat <<EOF
 Usage: $(basename "$0") [OPTION]
 
 Options:
@@ -526,7 +539,6 @@ Options:
     -h, --help       Display this help message
 EOF
 }
-
 
 # Execute main function
 main "$@"
