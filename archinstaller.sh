@@ -134,7 +134,7 @@ install_base_system() {
         grub
         efibootmgr
         btrfs-progs
-        mtools
+        mtools nmcli
         snapper nano neovim
 
         # Development Tools
