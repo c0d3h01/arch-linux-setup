@@ -225,7 +225,7 @@ apply_optimizations() {
     echo "ILoveCandy" >> /etc/pacman.conf
     echo "DisableDownloadTimeout" >> /etc/pacman.conf
 
-    cat > "usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IO'
+    cat > "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IO'
 # HDD
 ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", \
     ATTR{queue/scheduler}="bfq"
@@ -239,7 +239,7 @@ ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", \
     ATTR{queue/scheduler}="none"
 IO
 
-    cat > "usr/lib/modprobe.d/nvidia.conf" <<'NVID'
+    cat > "/usr/lib/modprobe.d/nvidia.conf" <<'NVID'
 options nvidia NVreg_UsePageAttributeTable=1 \
     NVreg_InitializeSystemMemoryAllocations=0 \
     NVreg_DynamicPowerManagement=0x02 \
@@ -257,7 +257,7 @@ swap-priority = 100
 fs-type = swap
 ZRAMCONF
 
-    cat > "usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
+    cat > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
 ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
   RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
 
@@ -343,32 +343,19 @@ EOF
 }
 
 desktop_install() {
-# arch-chroot /mnt /bin/bash <<EOF
-#     # Desktop Environment GNOME
-#     pacman -Sy --needed --noconfirm \
-#         wayland \
-#         xorg-server \
-#         xorg-xwayland \
-#         gnome \
-#         gnome-tweaks \
-#         gnome-terminal \
-#         gnome-software
-#     systemctl enable gdm
-# EOF
-
 arch-chroot /mnt /bin/bash <<EOF
-    # Update package database
-    pacman -Sy
-
-    # Install Cosmic Desktop
-    pacman -S --needed --noconfirm \
-        cosmic \
+    # Desktop Environment GNOME
+    pacman -Sy --needed --noconfirm \
+        wayland \
+        xorg-server \
+        xorg-xwayland \
+        gnome \
+        gnome-tweaks \
+        gnome-terminal \
         alacritty \
-        cups \
-        system-config-printer \
-        flatpak \
-        gnome-keyring \
-        lightdm
+        cups
+        
+    systemctl enable gdm
 EOF
 }
 
