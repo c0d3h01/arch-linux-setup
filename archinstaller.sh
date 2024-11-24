@@ -124,38 +124,6 @@ setup_filesystems() {
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
-setup_cachyos_repo() {
-    info "Setting up CachyOS repository..."
-    
-    # Add keys
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-
-    # Install CachyOS packages
-    pacman -U --noconfirm \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
-
-    # Add CachyOS repositories to pacman.conf
-    cat >> /etc/pacman.conf <<'CONF'
-# CachyOS repositories
-[cachyos-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-core-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-extra-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-CONF
-
-    # Update package database
-    pacman -Sy
-}
-
-
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
@@ -163,7 +131,7 @@ install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux-cachyos-autofdo linux-cachyos-autofdo-headers
+        linux-zen linux-zen-headers
         linux-firmware
 
         # CPU & GPU Drivers
@@ -199,7 +167,34 @@ configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<EOF    
+    # Add keys
+    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key F3B607488DB35A47
+
+    # Install CachyOS packages
+    pacman -U --noconfirm \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
+
+    # Add CachyOS repositories to pacman.conf
+    cat >> /etc/pacman.conf <<'CONF'
+# CachyOS repositories
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-core-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos-extra-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+CONF
+
+    # Update package database
+    pacman -Syyu --noconfirm
+    
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -415,7 +410,7 @@ archinstall() {
     # Main installation steps
     setup_disk
     setup_filesystems
-    setup_cachyos_repo
+   # setup_cachyos_repo
     install_base_system
     configure_system
     apply_optimizations
