@@ -17,7 +17,7 @@ declare -A CONFIG
 
 # Configuration function
 init_config() {
-    
+
     while true; do
         read -s -p "Enter a single password for root and user: " PASSWORD
         echo
@@ -125,51 +125,30 @@ install_base_system() {
 
     local base_packages=(
         # Core System
-        base base-devel linux-lts linux-lts-docs linux-headers linux-firmware
+        base base-devel
+        linux-lts linux-headers
+        linux-firmware
 
         # CPU & GPU Drivers
-        amd-ucode
-        xf86-video-amdgpu
+        amd-ucode xf86-video-amdgpu
         vulkan-radeon vulkan-tools
         libva-mesa-driver mesa-vdpau mesa
-        vulkan-icd-loader libva-utils
-        vdpauinfo radeontop
-        os-prober mesa e2fsprogs dosfstools ntfs-3g
-
-        # Graphics Extensions
-        lib32-mesa
-        lib32-vulkan-radeon
-        mesa-vdpau
-        lib32-mesa-vdpau
+        vulkan-icd-loader libva-utils gvfs
 
         # Essential System Utilities
-        networkmanager
-        grub
-        efibootmgr
-        btrfs-progs
-        mtools nmcli
-        snapper nano neovim
-
-        # Development Tools
-        gcc gdb cmake clang
-        python python-pip
-        nodejs npm
+        networkmanager grub efibootmgr
+        btrfs-progs bash-completion
+        snapper vim fastfetch
+        reflector sudo
 
         # System Performance
-        zram-generator
-        thermald
-        ananicy-cpp
+        zram-generator thermald ananicy-cpp
 
         # Multimedia & Bluetooth
-        gstreamer-vaapi
-        ffmpeg
-        bluez
-        bluez-utils
-        pipewire
-        pipewire-alsa
-        pipewire-jack
-        pipewire-pulse
-        wireplumber
+        gstreamer-vaapi ffmpeg
+        bluez bluez-utils
+        pipewire pipewire-alsa pipewire-jack
+        pipewire-pulse wireplumber
     )
 
     pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
@@ -258,9 +237,9 @@ SYSCTL{vm.swappiness}="150"
 LABEL="zram_end"
 ZRULES
 
-    # Advanced kernel tuning
+# Advanced kernel tuning
 cat > "/etc/sysctl.d/99-kernel-optimization.conf" <<'SYS'
-# VM settings optimized for 8GB RAM and desktop use
+# VM settings optimized
 vm.swappiness = 10
 vm.vfs_cache_pressure = 50
 vm.dirty_ratio = 3
@@ -380,22 +359,6 @@ TYPES
 EOF
 }
 
-# Services configuration function
-configure_services() {
-    info "Configuring services..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Enable system services
-    systemctl enable thermald
-    systemctl enable NetworkManager
-    systemctl enable bluetooth.service
-    systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer
-    systemctl enable ananicy-cpp.service
-    systemctl enable cups
-    systemctl enable lightdm
-EOF
-}
-
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
@@ -442,25 +405,20 @@ usrsetup() {
     sudo pacman -S --needed \
         nodejs npm \
         virt-manager \
-        qemu-full \
-        iptables \
-        libvirt \
-        edk2-ovmf \
-        dnsmasq \
-        bridge-utils \
-        vde2 \
-        dmidecode \
-        xclip \
+        qemu-full iptables \
+        libvirt edk2-ovmf \
+        dnsmasq bridge-utils \
+        vde2 dmidecode xclip \
         rocm-hip-sdk \
         rocm-opencl-sdk \
+        python python-pip \
         python-numpy \
         python-pandas \
         python-scipy \
         python-matplotlib \
         python-scikit-learn \
         flatpak ufw-extras \
-        rust \
-        ninja
+        ninja gcc gdb cmake clang
 
     # Install user applications via yay
     yay -S --needed \
@@ -470,14 +428,12 @@ usrsetup() {
         tor-browser-bin \
         vesktop-bin \
         zoom \
-        docker \
-        docker-compose \
+        docker-desktop \
         android-ndk \
-        android-tools \
         android-sdk \
         android-studio \
         postman-bin \
-        flutter \
+        flutter-bin \
         youtube-music-bin \
         notion-app-electron \
         zed
@@ -503,8 +459,25 @@ usrsetup() {
 EOF
 }
 
+# Services configuration function
+configure_services() {
+    info "Configuring services..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Enable system services
+    systemctl enable thermald
+    systemctl enable NetworkManager
+    systemctl enable bluetooth.service
+    systemctl enable systemd-zram-setup@zram0.service
+    systemctl enable fstrim.timer
+    systemctl enable ananicy-cpp.service
+    systemctl enable cups
+EOF
+}
+
 # Main execution function
 main() {
+    init_config
+
     case "$1" in
     "--install" | "-i")
         archinstall
