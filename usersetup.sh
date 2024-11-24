@@ -37,7 +37,7 @@ main() {
         noto-fonts-emoji \
         ttf-liberation \
         ttf-fira-code \
-        flatpak \
+        flatpak ufw-extras \
         go \
         rust \
         ninja \
