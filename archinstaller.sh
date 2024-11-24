@@ -127,7 +127,6 @@ setup_filesystems() {
 setup_cachyos_repo() {
     info "Setting up CachyOS repository..."
     
-    arch-chroot /mnt /bin/bash <<EOF
     # Add keys
     pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key F3B607488DB35A47
@@ -154,7 +153,6 @@ CONF
 
     # Update package database
     pacman -Sy
-EOF
 }
 
 
