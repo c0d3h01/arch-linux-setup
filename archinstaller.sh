@@ -167,12 +167,6 @@ Include = /etc/pacman.d/cachyos-v3-mirrorlist
 Include = /etc/pacman.d/cachyos-mirrorlist
 CONF
 
-    mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-    cat > /etc/pacman.d/mirrorlist <<'EOF'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOF
-
     # Update package database
     pacman -Syy --noconfirm
     
