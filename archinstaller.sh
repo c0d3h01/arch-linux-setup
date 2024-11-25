@@ -173,7 +173,7 @@ install_base_system() {
         plasma kde-applications
 
         # Daily Usage Needs
-        firefox zed
+        firefox zed micro
     )
 
     pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
