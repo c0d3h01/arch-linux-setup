@@ -369,7 +369,21 @@ desktop_install() {
         gnome gnome-tweaks \
         gnome-terminal \
         alacritty cups
-        
+EOF
+}
+
+# Services configuration function
+configure_services() {
+    info "Configuring services..."
+    arch-chroot /mnt /bin/bash <<EOF
+    # Enable system services
+    systemctl enable thermald
+    systemctl enable NetworkManager
+    systemctl enable bluetooth.service
+    systemctl enable systemd-zram-setup@zram0.service
+    systemctl enable fstrim.timer
+    systemctl enable ananicy-cpp.service
+    systemctl enable cups
     systemctl enable gdm
 EOF
 }
@@ -392,6 +406,29 @@ archinstall() {
 
 # User environment setup function
 usrsetup() {
+# Yay installation AUR pkg manager
+git clone https://aur.archlinux.org/yay-bin.git
+cd yay-bin
+makepkg -si
+
+    # Install user applications via yay
+    yay -S --needed \
+        brave-bin \
+        telegram-desktop-bin \
+        onlyoffice-bin \
+        tor-browser-bin \
+        vesktop-bin \
+        zoom \
+        docker-desktop \
+        android-ndk \
+        android-sdk \
+        android-studio \
+        postman-bin \
+        flutter-bin \
+        youtube-music-bin \
+        notion-app-electron \
+        zed
+        
     sudo pacman -S --needed \
         nodejs npm \
         virt-manager \
@@ -424,49 +461,12 @@ usrsetup() {
     # Enable services
     sudo systemctl enable docker
     sudo systemctl enable ufw
-
-    git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    makepkg -si
-
-    # Install user applications via yay
-    sudo yay -S --needed \
-        brave-bin \
-        telegram-desktop-bin \
-        onlyoffice-bin \
-        tor-browser-bin \
-        vesktop-bin \
-        zoom \
-        docker-desktop \
-        android-ndk \
-        android-sdk \
-        android-studio \
-        postman-bin \
-        flutter-bin \
-        youtube-music-bin \
-        notion-app-electron \
-        zed
-
+    
     # Configure Android SDK
     sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "\$HOME/.bashrc"
     sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "\$HOME/.bashrc"
     sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >> "\$HOME/.bashrc"
     sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >> "\$HOME/.bashrc"
-}
-
-# Services configuration function
-configure_services() {
-    info "Configuring services..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Enable system services
-    systemctl enable thermald
-    systemctl enable NetworkManager
-    systemctl enable bluetooth.service
-    systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer
-    systemctl enable ananicy-cpp.service
-    systemctl enable cups
-EOF
 }
 
 # Main execution function
