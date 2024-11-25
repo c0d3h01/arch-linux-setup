@@ -127,14 +127,7 @@ setup_filesystems() {
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
-    mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-    cat > /etc/pacman.d/mirrorlist <<'EOF'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOF
-    # Update package database
-    pacman -Syy
-    
+
     local base_packages=(
         # Core System
         base base-devel
@@ -221,16 +214,7 @@ EOF
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF
-# Pacman optimization
-mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-    cat > /etc/pacman.d/mirrorlist <<'EOFM'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOFM
-    # Update package database
-    pacman -Syy
-    
+    arch-chroot /mnt /bin/bash <<EOF    
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
