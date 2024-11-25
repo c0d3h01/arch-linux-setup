@@ -64,7 +64,7 @@ setup_disk() {
     info "Preparing disk partitions..."
 
     # Safety check
-    read -p "${RED}WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N) ${NC}" -n 1 -r
+    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N)" -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
@@ -181,7 +181,7 @@ configure_system() {
     echo "${CONFIG[HOSTNAME]}" > /etc/hostname
 
     # Configure hosts
-    cat > /etc/hosts <<-END
+    tee > /etc/hosts <<-END
 # Standard host addresses
 127.0.0.1  localhost
 ::1        localhost ip6-localhost ip6-loopback
@@ -220,7 +220,7 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
 
 # ZRAM configuration
-cat > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
 zram-size = ram
 compression-algorithm = zstd
@@ -228,138 +228,47 @@ max-comp-streams = auto
 swap-priority = 100
 fs-type = swap
 ZRAMCONF
-
-cat > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
-ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
-  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
-
-TEST!="/dev/zram0", GOTO="zram_end"
-
-SYSCTL{vm.swappiness}="150"
-
-LABEL="zram_end"
-ZRULES
-
-# Advanced kernel tuning
-cat > "/etc/sysctl.d/99-kernel-optimization.conf" <<'SYS'
-# VM settings optimized
-vm.swappiness = 10
-vm.vfs_cache_pressure = 50
-vm.dirty_ratio = 3
-vm.dirty_bytes = 134217728
-vm.page-cluster = 0
-vm.dirty_background_bytes = 67108864
-vm.dirty_expire_centisecs = 3000
-vm.dirty_writeback_centisecs = 1500
-
-# Kernel settings
-kernel.nmi_watchdog = 0
-kernel.unprivileged_userns_clone = 1
-kernel.printk = 3 3 3 3
-kernel.kptr_restrict = 2
-kernel.kexec_load_disabled = 1
-kernel.sched_rt_runtime_us = -1
-
-# AMD CPU specific optimizations
-kernel.sched_autogroup_enabled = 1
-kernel.sched_cfs_bandwidth_slice_us = 500
-
-# File system settings
-fs.inotify.max_user_watches = 524288
-fs.file-max = 2097152
-
-# Network optimizations for desktop use
-net.core.netdev_max_backlog = 16384
-net.ipv4.tcp_fastopen = 3
-net.ipv4.tcp_max_syn_backlog = 8192
-net.core.somaxconn = 8192
-net.ipv4.tcp_slow_start_after_idle = 0
-
-# IOMMU settings for AMD
-kernel.perf_event_max_sample_rate = 100000
-kernel.perf_cpu_time_max_percent = 25
-SYS
-
-mkdir -p /etc/ananicy.d/
-
-cat > "/etc/ananicy.d/ananicy.conf" <<'ANA'
-# More frequent checks for faster response
-check_freq = 10  
-
-# Core functionality
-cgroup_load = true
-type_load = true
-rule_load = true
-
-# All optimizations enabled
-apply_nice = true
-apply_latnice = true
-apply_ionice = true
-apply_sched = true
-apply_oom_score_adj = true
-apply_cgroup = true
-
-# Minimal logging for better performance
-loglevel = warn
-log_applied_rule = false
-cgroup_realtime_workaround = true
-ANA
-
-# Now let's create optimized rules
-cat > "/etc/ananicy.d/00-desktop.rules" <<'RULES'
-# GNOME Desktop Environment
-{ "name": "gnome-shell", "type": "de", "nice": -5, "sched": "other", "ioclass": "realtime", "ionice": 1 }
-{ "name": "mutter", "type": "de", "nice": -5, "sched": "other", "ioclass": "realtime", "ionice": 1 }
-{ "name": "gnome-session-binary", "type": "de", "nice": -3 }
-
-# System UI responsiveness
-{ "name": "pipewire", "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
-{ "name": "wireplumber", "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
-
-# Browsers for fast web response
-{ "name": "brave", "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
-{ "name": "WebContent", "type": "browser", "nice": -1, "ioclass": "best-effort", "ionice": 5 }
-{ "name": "chromium", "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
-
-# System services
-{ "name": "systemd", "type": "system", "nice": -5 }
-{ "name": "systemd-*", "type": "system", "nice": -5 }
-{ "name": "dbus-daemon", "type": "system", "nice": -4 }
-
-# GPU related
-{ "name": "glxgears", "type": "gpu", "nice": -10 }
-{ "name": "vulkan*", "type": "gpu", "nice": -10 }
-{ "name": "vkBasalt", "type": "gpu", "nice": -10 }
-
-# Video/Media
-{ "name": "ffmpeg", "type": "video-transcoding", "nice": 0, "ioclass": "best-effort", "ionice": 4 }
-{ "name": "gstreamer*", "type": "video-transcoding", "nice": 0, "ioclass": "best-effort" }
-
-# Games and real-time applications
-{ "name": "*steam*", "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
-{ "name": "gamescope", "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
-{ "name": "mangohud", "type": "game", "nice": -5 }
-
-# Background tasks - lower priority
-{ "name": "packagekitd", "type": "package-manager", "nice": 10, "ioclass": "idle" }
-{ "name": "pacman", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
-{ "name": "yay", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
-{ "name": "paru", "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
-RULES
-
-# Add schedulers types
-cat > "/etc/ananicy.d/00-types.types" <<'TYPES'
-# Types configuration
-{ "type": "de", "nice": -5, "sched": "other", "ioclass": "best-effort", "ionice": 3 }
-{ "type": "audio", "nice": -15, "sched": "rr", "ioclass": "realtime" }
-{ "type": "browser", "nice": -3, "ioclass": "best-effort", "ionice": 5 }
-{ "type": "system", "nice": -5 }
-{ "type": "gpu", "nice": -10 }
-{ "type": "game", "nice": -5, "ioclass": "best-effort", "ionice": 3 }
-{ "type": "video-transcoding", "nice": 0, "ioclass": "best-effort", "ionice": 4 }
-{ "type": "package-manager", "nice": 10, "ioclass": "best-effort", "ionice": 7 }
-TYPES
 EOF
+}
+
+reflector_setup() {
+# Create a backup of your current mirrorlist
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+
+# Run reflector with the parameters directly
+reflector --verbose --protocol https --country in --latest 20 --sort rate --age 24 --save /etc/pacman.d/mirrorlist
+
+# Create the systemd service directory if it doesn't exist
+mkdir -p /etc/systemd/system
+
+# Create a custom systemd service to run reflector periodically
+tee /etc/systemd/system/reflector.service << 'EOFS'
+[Unit]
+Description=Pacman mirrorlist update
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/reflector --protocol https --country in --latest 20 --sort rate --age 24 --save /etc/pacman.d/mirrorlist
+
+[Install]
+WantedBy=multi-user.target
+EOFS
+
+# Create the timer to run the service
+tee /etc/systemd/system/reflector.timer << 'EOFT'
+[Unit]
+Description=Run reflector weekly
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=12h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOFT
 }
 
 desktop_install() {
@@ -385,6 +294,7 @@ configure_services() {
     systemctl enable ananicy-cpp.service
     systemctl enable cups
     systemctl enable gdm
+    systemctl enable reflector.timer
 EOF
 }
 
@@ -418,6 +328,7 @@ makepkg -si
         onlyoffice-bin \
         tor-browser-bin \
         vesktop-bin \
+        github-desktop-bin \
         zoom \
         docker-desktop \
         android-ndk \
@@ -463,10 +374,10 @@ makepkg -si
     sudo systemctl enable ufw
     
     # Configure Android SDK
-    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "\$HOME/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "\$HOME/.bashrc"
-    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >> "\$HOME/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >> "\$HOME/.bashrc"
+    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "~/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "~/.bashrc"
+    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >> "~/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >> "~/.bashrc"
 }
 
 # Main execution function
@@ -496,7 +407,7 @@ main() {
 }
 
 show_help() {
-    cat <<EOF
+    tee <<EOF
 Usage: $(basename "$0") [OPTION]
 
 Options:
