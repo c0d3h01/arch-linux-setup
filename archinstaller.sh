@@ -124,14 +124,57 @@ setup_filesystems() {
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
+cachyos_repo_setup() {
+    # Add keys
+    # pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    # pacman-key --lsign-key F3B607488DB35A47
+
+    # Install CachyOS packages
+    # pacman -U --noconfirm \
+        # 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
+        # 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
+        # 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
+        # 'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
+
+    # Add CachyOS repositories to pacman.conf
+    # cat >> /etc/pacman.conf <<'CONF'
+# CachyOS repositories
+# [cachyos-v3]
+# Include = /etc/pacman.d/cachyos-v3-mirrorlist
+# [cachyos-core-v3]
+# Include = /etc/pacman.d/cachyos-v3-mirrorlist
+# [cachyos-extra-v3]
+# Include = /etc/pacman.d/cachyos-v3-mirrorlist
+# [cachyos]
+# Include = /etc/pacman.d/cachyos-mirrorlist
+# CONF
+
+    curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+    cd cachyos-repo
+    ./cachyos-repo.sh
+
+    mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+    cat > /etc/pacman.d/mirrorlist <<'EOF'
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+EOF
+
+    # Update package database
+    pacman -Syy --noconfirm
+}
+
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
 
+    ${cachyos_repo_setup}
+
     local base_packages=(
         # Core System
         base base-devel
-        linux-zen linux-zen-headers
+        linux-cachyos linux-cachyos-headers # default kernel
+        linux-cachyos-autofdo linux-cachyos-autofdo-headers # perf-optimized kernel
         linux-firmware
 
         # CPU & GPU Drivers
@@ -168,32 +211,8 @@ configure_system() {
 
     # Chroot and configure
     arch-chroot /mnt /bin/bash <<EOF    
-    # Add keys
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
 
-    # Install CachyOS packages
-    pacman -U --noconfirm \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
-
-    # Add CachyOS repositories to pacman.conf
-    cat >> /etc/pacman.conf <<'CONF'
-# CachyOS repositories
-[cachyos-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-core-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos-extra-v3]
-Include = /etc/pacman.d/cachyos-v3-mirrorlist
-[cachyos]
-Include = /etc/pacman.d/cachyos-mirrorlist
-CONF
-
-    # Update package database
-    pacman -Syyu --noconfirm
+    ${cachyos_repo_setup}
     
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
@@ -243,6 +262,7 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
     
+
 # Pacman optimization
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
