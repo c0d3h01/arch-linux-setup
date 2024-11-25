@@ -128,18 +128,13 @@ setup_filesystems() {
 install_base_system() {
     info "Installing base system..."
     
-    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
-    tee > "/etc/pacman.d/mirrorlist" <<EOF
-    ## India
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOF
+    reflector --country India,Singapore --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
     local base_packages=(
         # Core System
         base base-devel
         linux linux-firmware
-        linux-zen linux-zen-headers
+        linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
@@ -194,7 +189,7 @@ configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<EOF    
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -242,14 +237,7 @@ EOF
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
-
-    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
-    tee > "/etc/pacman.d/mirrorlist" <<EOFMIR
-## India
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOFMIR
-
+    reflector --country India,Singapore --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist    
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
