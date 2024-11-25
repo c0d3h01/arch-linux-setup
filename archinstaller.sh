@@ -168,7 +168,19 @@ EOF
 install_base_system() {
     info "Installing base system..."
 
-    ${cachyos_repo_setup}
+    curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+    cd cachyos-repo
+    ./cachyos-repo.sh
+
+    mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+    cat > /etc/pacman.d/mirrorlist <<'EOF'
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+EOF
+
+    # Update package database
+    pacman -Syy --noconfirm
 
     local base_packages=(
         # Core System
@@ -212,7 +224,19 @@ configure_system() {
     # Chroot and configure
     arch-chroot /mnt /bin/bash <<EOF    
 
-    ${cachyos_repo_setup}
+    curl https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
+    tar xvf cachyos-repo.tar.xz
+    cd cachyos-repo
+    ./cachyos-repo.sh
+
+    mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+    cat > /etc/pacman.d/mirrorlist <<'EOF'
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+EOF
+
+    # Update package database
+    pacman -Syy --noconfirm
     
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
