@@ -224,10 +224,10 @@ configure_system() {
     ./cachyos-repo.sh
 
     mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-    cat > /etc/pacman.d/mirrorlist <<'EOF'
+    cat > /etc/pacman.d/mirrorlist <<'EOFM'
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-EOF
+EOFM
 
     # Update package database
     pacman -Syyu
