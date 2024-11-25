@@ -127,6 +127,34 @@ setup_filesystems() {
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
+    
+    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
+    tee > "/etc/pacman.d/mirrorlist" <<EOF
+    ## India
+Server = http://mirror.4v1.in/archlinux/$repo/os/$arch
+Server = https://mirror.4v1.in/archlinux/$repo/os/$arch
+Server = https://mirrors.abhy.me/archlinux/$repo/os/$arch
+Server = https://mirror.albony.in/archlinux/$repo/os/$arch
+Server = https://mirror.maa.albony.in/archlinux/$repo/os/$arch
+Server = https://mirror.nag.albony.in/archlinux/$repo/os/$arch
+Server = http://in.mirrors.cicku.me/archlinux/$repo/os/$arch
+Server = https://in.mirrors.cicku.me/archlinux/$repo/os/$arch
+Server = http://mirror.cse.iitk.ac.in/archlinux/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = http://archlinux.mirror.net.in/archlinux/$repo/os/$arch
+Server = https://archlinux.mirror.net.in/archlinux/$repo/os/$arch
+Server = http://in.arch.niranjan.co/$repo/os/$arch
+Server = https://in.arch.niranjan.co/$repo/os/$arch
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
+EOF
 
     local base_packages=(
         # Core System
@@ -235,6 +263,35 @@ EOF
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
+
+    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
+    tee > "/etc/pacman.d/mirrorlist" <<EOFMIR
+## India
+Server = http://mirror.4v1.in/archlinux/$repo/os/$arch
+Server = https://mirror.4v1.in/archlinux/$repo/os/$arch
+Server = https://mirrors.abhy.me/archlinux/$repo/os/$arch
+Server = https://mirror.albony.in/archlinux/$repo/os/$arch
+Server = https://mirror.maa.albony.in/archlinux/$repo/os/$arch
+Server = https://mirror.nag.albony.in/archlinux/$repo/os/$arch
+Server = http://in.mirrors.cicku.me/archlinux/$repo/os/$arch
+Server = https://in.mirrors.cicku.me/archlinux/$repo/os/$arch
+Server = http://mirror.cse.iitk.ac.in/archlinux/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = http://archlinux.mirror.net.in/archlinux/$repo/os/$arch
+Server = https://archlinux.mirror.net.in/archlinux/$repo/os/$arch
+Server = http://in.arch.niranjan.co/$repo/os/$arch
+Server = https://in.arch.niranjan.co/$repo/os/$arch
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
+EOFMIR
+
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
