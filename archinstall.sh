@@ -129,7 +129,7 @@ install_base_system() {
     info "Installing base system..."
     
     reflector --country India,Singapore --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-
+    pacman -Syy
     local base_packages=(
         # Core System
         base base-devel
@@ -237,7 +237,8 @@ EOF
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
-    reflector --country India,Singapore --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist    
+    reflector --country India,Singapore --age 6 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    pacman -Syy
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
