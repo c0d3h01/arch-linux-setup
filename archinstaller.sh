@@ -136,7 +136,7 @@ install_base_system() {
 
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
-        vulkan-radeon vulkan-tools
+        vulkan-radeon vulkan-tools xf86-input-libinput
         libva-mesa-driver mesa-vdpau mesa
         vulkan-icd-loader libva-utils gvfs
 
@@ -145,15 +145,35 @@ install_base_system() {
         btrfs-progs bash-completion
         snapper vim fastfetch
         reflector sudo git nano
+        ttf-dejavu ttf-liberation noto-fonts
+        laptop-detect nodejs npm 
+        virt-manager qemu-full iptables
+        libvirt edk2-ovmf
+        dnsmasq bridge-utils
+        vde2 dmidecode xclip
+        rocm-hip-sdk rocm-opencl-sdk
+        python python-pip
+        python-numpy python-pandas
+        python-scipy python-matplotlib
+        python-scikit-learn
+        flatpak ufw-extras
+        ninja gcc gdb cmake clang
 
-        # System Performance
+        # System tools
         zram-generator thermald ananicy-cpp
+        alacritty cups
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
         bluez bluez-utils
         pipewire pipewire-alsa pipewire-jack
         pipewire-pulse wireplumber
+
+        # Desktop Environment GNOME
+        plasma kde-applications
+
+        # Daily Usage Needs
+        firefox zed
     )
 
     pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
@@ -167,7 +187,7 @@ configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF    
+    arch-chroot /mnt /bin/bash <<EOF
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -214,7 +234,7 @@ EOF
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF    
+    arch-chroot /mnt /bin/bash <<EOF
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
@@ -231,56 +251,6 @@ ZRAMCONF
 EOF
 }
 
-reflector_setup() {
-# Create a backup of your current mirrorlist
-cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-
-# Run reflector with the parameters directly
-reflector --verbose --protocol https --country in --latest 20 --sort rate --age 24 --save /etc/pacman.d/mirrorlist
-
-# Create the systemd service directory if it doesn't exist
-mkdir -p /etc/systemd/system
-
-# Create a custom systemd service to run reflector periodically
-tee /etc/systemd/system/reflector.service << 'EOFS'
-[Unit]
-Description=Pacman mirrorlist update
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/reflector --protocol https --country in --latest 20 --sort rate --age 24 --save /etc/pacman.d/mirrorlist
-
-[Install]
-WantedBy=multi-user.target
-EOFS
-
-# Create the timer to run the service
-tee /etc/systemd/system/reflector.timer << 'EOFT'
-[Unit]
-Description=Run reflector weekly
-
-[Timer]
-OnCalendar=weekly
-RandomizedDelaySec=12h
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOFT
-}
-
-desktop_install() {
-    arch-chroot /mnt /bin/bash <<EOF
-    # Desktop Environment GNOME
-    pacman -Sy --needed --noconfirm \
-        gnome gnome-tweaks \
-        gnome-terminal \
-        alacritty cups
-EOF
-}
-
 # Services configuration function
 configure_services() {
     info "Configuring services..."
@@ -293,8 +263,7 @@ configure_services() {
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
-    systemctl enable gdm
-    systemctl enable reflector.timer
+    systemctl enable sddm
 EOF
 }
 
@@ -308,7 +277,6 @@ archinstall() {
     install_base_system
     configure_system
     apply_optimizations
-    desktop_install
     configure_services
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
@@ -316,14 +284,13 @@ archinstall() {
 
 # User environment setup function
 usrsetup() {
-# Yay installation AUR pkg manager
-git clone https://aur.archlinux.org/yay-bin.git
-cd yay-bin
-makepkg -si
+    # Yay installation AUR pkg manager
+    git clone https://aur.archlinux.org/yay-bin.git
+    cd yay-bin
+    makepkg -si
 
     # Install user applications via yay
-    yay -S --needed \
-        brave-bin \
+    yay -S --needed --noconfirm \
         telegram-desktop-bin \
         onlyoffice-bin \
         tor-browser-bin \
@@ -337,26 +304,7 @@ makepkg -si
         postman-bin \
         flutter-bin \
         youtube-music-bin \
-        notion-app-electron \
-        zed
-        
-    sudo pacman -S --needed \
-        nodejs npm \
-        virt-manager \
-        qemu-full iptables \
-        libvirt edk2-ovmf \
-        dnsmasq bridge-utils \
-        vde2 dmidecode xclip \
-        rocm-hip-sdk \
-        rocm-opencl-sdk \
-        python python-pip \
-        python-numpy \
-        python-pandas \
-        python-scipy \
-        python-matplotlib \
-        python-scikit-learn \
-        flatpak ufw-extras \
-        ninja gcc gdb cmake clang
+        notion-app-electron
 
     # Configure firewall
     sudo ufw enable
@@ -368,16 +316,16 @@ makepkg -si
     sudo ufw allow 1714:1764/udp
     sudo ufw allow 1714:1764/tcp
     sudo ufw logging on
-    
+
     # Enable services
     sudo systemctl enable docker
     sudo systemctl enable ufw
-    
+
     # Configure Android SDK
-    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> "~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >> "~/.bashrc"
-    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >> "~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >> "~/.bashrc"
+    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >>"~/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >>"~/.bashrc"
+    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >>"~/.bashrc"
+    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >>"~/.bashrc"
 }
 
 # Main execution function
