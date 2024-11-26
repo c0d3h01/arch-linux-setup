@@ -174,7 +174,7 @@ install_base_system() {
 
         # System tools
         zram-generator thermald ananicy-cpp
-        alacritty cups
+        alacritty cups btrfs-assistant
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
