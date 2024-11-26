@@ -43,7 +43,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,compress-force=zstd,space_cache=v2,commit=120,discard=async,autodefrag,clear_cache,ssd,nodiratime"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=120,discard=async,autodefrag"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -127,7 +127,7 @@ setup_filesystems() {
 # Base system installation function
 install_base_system() {
     info "Installing base system..."
-    
+
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -135,11 +135,11 @@ install_base_system() {
 
     # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 20 mirrors..."
-    reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
     # Refresh package databases
     pacman -Syy
-    
+
     local base_packages=(
         # Core System
         base base-devel
@@ -167,9 +167,10 @@ install_base_system() {
 
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
-        vulkan-radeon vulkan-tools xf86-input-libinput
-        libva-mesa-driver mesa-vdpau mesa
+        xf86-input-libinput mesa-git
+        libva-vdpau-driver mesa-vdpau
         vulkan-icd-loader libva-utils gvfs
+        radeon-profile-git corectl
 
         # System tools
         zram-generator thermald ananicy-cpp
@@ -196,7 +197,7 @@ configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF    
+    arch-chroot /mnt /bin/bash <<EOF
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -205,6 +206,9 @@ configure_system() {
     echo "${CONFIG[LOCALE]} UTF-8" >> /etc/locale.gen
     locale-gen
     echo "LANG=${CONFIG[LOCALE]}" > /etc/locale.conf
+
+    # Set Keymap
+    echo "KEYMAP=us" > "/etc/vconsole.conf"
 
     # Set hostname
     echo "${CONFIG[HOSTNAME]}" > /etc/hostname
@@ -243,17 +247,17 @@ EOF
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF 
+    arch-chroot /mnt /bin/bash <<EOF
 
-    # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
-    info "Updating mirrorlist with the latest 20 mirrors..."
-    reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-    
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
 
-# Refresh package databases
+    # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
+    info "Updating mirrorlist with the latest 20 mirrors..."
+    reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    
+    # Refresh package databases
     pacman -Syy
     
 # ZRAM configuration
@@ -261,11 +265,38 @@ tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
 zram-size = ram
 compression-algorithm = zstd
-max-comp-streams = auto
-swap-priority = 100
-fs-type = swap
 ZRAMCONF
 
+# ZRAM Rules
+tee > "/etc/udev/rules.d/99-zram.rules" <<'ZRULES'
+ACTION=="add", KERNEL=="zram0", ATTR{comp_algorithm}="zstd", ATTR{disksize}="4G", RUN="/usr/bin/mkswap -U clear /dev/%k", TAG+="systemd"
+ZRULES
+
+# Reflector timer set
+tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
+--save /etc/pacman.d/mirrorlist
+--country India
+--protocol https
+--latest 5
+REFCONF
+
+# Hybrid graphics/AMD Dynamic Switchable Graphics
+echo OFF > /sys/kernel/debug/vgaswitcheroo/switch
+
+# Automatic fan control
+echo "2" > /sys/class/drm/card0/device/hwmon/hwmon0/pwm1_enable
+
+# Turn vsync off
+tee > "~/.drirc" <<'VSYNC'
+<driconf>
+    <device screen="0" driver="dri2">
+        <application name="Default">
+            <option name="vblank_mode" value="0" />
+        </application>
+    </device>
+    ...
+</driconf>
+VSYNC
 EOF
 }
 
@@ -331,7 +362,7 @@ usrsetup() {
         flutter-bin \
         youtube-music-bin \
         notion-app-electron
-    
+
     # Configure firewall
     sudo ufw enable
     sudo ufw default deny incoming
