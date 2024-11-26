@@ -133,17 +133,6 @@ install_base_system() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
 
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-
-    pacman -U 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
-    sed -i '/\[cachyos\]/,/^$/d' /etc/pacman.conf && 
-    sed -i '/\[cachyos-v3\]/,/^$/d' /etc/pacman.conf && 
-    echo -e "\n[cachyos]\nInclude = /etc/pacman.d/cachyos-mirrorlist\n\n[cachyos-v3]\nInclude = /etc/pacman.d/cachyos-v3-mirrorlist" | sudo tee -a /etc/pacman.conf && 
-
     # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 20 mirrors..."
     reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
@@ -155,7 +144,7 @@ install_base_system() {
         # Core System
         base base-devel
         linux linux-firmware
-        linux-cachyos-autofdo linux-cachyos-autofdo-headers
+        linux-zen linux-zen-headers
 
         # Essential System Utilities
         networkmanager grub efibootmgr
@@ -184,9 +173,7 @@ install_base_system() {
 
         # System tools
         zram-generator thermald ananicy-cpp
-        alacritty cups cachyos-ananicy-rules
-        cachyos-settings cachyos-kernel-manager
-        cachyos-rate-mirrors
+        alacritty cups
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
@@ -256,30 +243,19 @@ EOF
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF
-
-    pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key F3B607488DB35A47
-
-    pacman -U 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-                'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r3.gf3211df-3.1-x86_64.pkg.tar.zst'
-    sed -i '/\[cachyos\]/,/^$/d' /etc/pacman.conf && 
-    sed -i '/\[cachyos-v3\]/,/^$/d' /etc/pacman.conf && 
-    echo -e "\n[cachyos]\nInclude = /etc/pacman.d/cachyos-mirrorlist\n\n[cachyos-v3]\nInclude = /etc/pacman.d/cachyos-v3-mirrorlist" | sudo tee -a /etc/pacman.conf && 
+    arch-chroot /mnt /bin/bash <<EOF 
 
     # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 20 mirrors..."
     reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-
-    # Refresh package databases
-    pacman -Syy
     
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
 
+# Refresh package databases
+    pacman -Syy
+    
 # ZRAM configuration
 tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0]
