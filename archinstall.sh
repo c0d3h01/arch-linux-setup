@@ -142,25 +142,6 @@ install_base_system() {
         libva-mesa-driver mesa-vdpau mesa
         vulkan-icd-loader libva-utils gvfs
 
-        # Essential System Utilities
-        networkmanager grub efibootmgr
-        btrfs-progs bash-completion
-        snapper vim fastfetch
-        reflector sudo git nano
-        ttf-dejavu ttf-liberation noto-fonts
-        laptop-detect nodejs npm 
-        virt-manager qemu-full iptables
-        libvirt edk2-ovmf
-        dnsmasq bridge-utils
-        vde2 dmidecode xclip
-        rocm-hip-sdk rocm-opencl-sdk
-        python python-pip
-        python-numpy python-pandas
-        python-scipy python-matplotlib
-        python-scikit-learn
-        flatpak ufw-extras
-        ninja gcc gdb cmake clang
-
         # System tools
         zram-generator thermald ananicy-cpp
         alacritty cups
@@ -300,8 +281,10 @@ usrsetup() {
         tor-browser-bin \
         vesktop-bin \
         github-desktop-bin \
-        zoom \
+        zoom linutil-bin \
         docker-desktop \
+        gparted \
+        visual-studio-code-bin \
         android-ndk \
         android-sdk \
         android-studio \
@@ -309,6 +292,26 @@ usrsetup() {
         flutter-bin \
         youtube-music-bin \
         notion-app-electron
+    
+    # Essential System Utilities
+    sudo pacman -S --needed --noconfirm \
+        networkmanager grub efibootmgr \
+        btrfs-progs bash-completion \
+        snapper vim fastfetch \
+        reflector sudo git nano \
+        ttf-dejavu ttf-liberation noto-fonts \
+        laptop-detect nodejs npm \
+        virt-manager qemu-full iptables \
+        libvirt edk2-ovmf \
+        dnsmasq bridge-utils \
+        vde2 dmidecode xclip \ 
+        rocm-hip-sdk rocm-opencl-sdk \
+        python python-pip \
+        python-numpy python-pandas \
+        python-scipy python-matplotlib \
+        python-scikit-learn \
+        flatpak ufw-extras \
+        ninja gcc gdb cmake clang
 
     # Configure firewall
     sudo ufw enable
