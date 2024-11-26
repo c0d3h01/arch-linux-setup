@@ -167,14 +167,15 @@ install_base_system() {
 
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
-        xf86-input-libinput mesa-git
-        libva-vdpau-driver mesa-vdpau
-        vulkan-icd-loader libva-utils gvfs
-        radeon-profile-git corectl
-
+        xf86-input-libinput
+        libva-mesa-driver mesa-vdpau
+        mesa corectl gvfs
+        vulkan-radeon vulkan-tools
+        vulkan-icd-loader libva-utils 
+        
         # System tools
         zram-generator thermald ananicy-cpp
-        alacritty cups btrfs-assistant
+        alacritty cups
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
