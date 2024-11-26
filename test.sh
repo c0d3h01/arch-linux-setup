@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2129
-# shellcheck disable=SC2024
-# shellcheck disable=SC2162
-# shellcheck disable=SC2154
 set -e
-#set -x
-#exec > >(tee -i arch_install.log) 2>&1
-
-# ==============================================================================
-# Arch Linux Installation Script
-# ==============================================================================
 
 # Color codes
 RED='\033[0;31m'
@@ -162,41 +152,10 @@ install_base_system() {
 
         # Essential System Utilities
         networkmanager grub efibootmgr
-        btrfs-progs bash-completion
-        snapper vim fastfetch
-        reflector sudo git nano
-        ttf-dejavu ttf-liberation noto-fonts
-        laptop-detect nodejs npm
-        virt-manager qemu-full iptables
-        libvirt edk2-ovmf
-        dnsmasq bridge-utils
-        vde2 dmidecode xclip
-        rocm-hip-sdk rocm-opencl-sdk
-        python python-pip
-        python-numpy python-pandas
-        python-scipy python-matplotlib
-        python-scikit-learn
-        flatpak ufw-extras
-        ninja gcc gdb cmake clang
+        btrfs-progs reflector sudo git nano
 
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
-        vulkan-radeon vulkan-tools xf86-input-libinput
-        libva-mesa-driver mesa-vdpau mesa
-        vulkan-icd-loader libva-utils gvfs
-
-        # System tools
-        zram-generator thermald ananicy-cpp
-        alacritty cups
-
-        # Multimedia & Bluetooth
-        gstreamer-vaapi ffmpeg
-        bluez bluez-utils
-        pipewire pipewire-alsa pipewire-jack
-        pipewire-pulse wireplumber
-
-        # Daily Usage Needs
-        firefox zed micro kdeconnect
     )
 
     pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
@@ -294,27 +253,6 @@ ZRAMCONF
 EOF
 }
 
-# Services configuration function
-configure_services() {
-    info "Configuring services..."
-    arch-chroot /mnt /bin/bash <<EOF
-    # Enable system services
-    systemctl enable thermald
-    systemctl enable NetworkManager
-    systemctl enable bluetooth.service
-    systemctl enable systemd-zram-setup@zram0.service
-    systemctl enable fstrim.timer
-    systemctl enable ananicy-cpp.service
-    systemctl enable cups
-EOF
-}
-
-desktop_install() {
-    # Desktop Environment GNOME
-    gnome gnome-terminal gnome-boxes
-    sudo systemctl enable gdm.service
-}
-
 archinstall() {
     info "Starting Arch Linux installation script..."
     init_config
@@ -325,58 +263,8 @@ archinstall() {
     install_base_system
     configure_system
     apply_optimizations
-    desktop_install
-    configure_services
     umount -R /mnt
     success "Installation completed! You can now reboot your system."
-}
-
-# User environment setup function
-usrsetup() {
-    # Yay installation AUR pkg manager
-    git clone https://aur.archlinux.org/yay-bin.git
-    cd yay-bin
-    makepkg -si
-
-    # Install user applications via yay
-    yay -S --needed --noconfirm \
-        telegram-desktop-bin \
-        onlyoffice-bin \
-        tor-browser-bin \
-        vesktop-bin \
-        github-desktop-bin \
-        zoom linutil-bin \
-        docker-desktop \
-        gparted \
-        visual-studio-code-bin \
-        android-ndk \
-        android-sdk \
-        android-studio \
-        postman-bin \
-        flutter-bin \
-        youtube-music-bin \
-        notion-app-electron
-    
-    # Configure firewall
-    sudo ufw enable
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow http
-    sudo ufw allow https
-    sudo ufw allow 1714:1764/udp
-    sudo ufw allow 1714:1764/tcp
-    sudo ufw logging on
-
-    # Enable services
-    sudo systemctl enable docker
-    sudo systemctl enable ufw
-
-    # Configure Android SDK
-    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >>"~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >>"~/.bashrc"
-    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >>"~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >>"~/.bashrc"
 }
 
 # Main execution function
