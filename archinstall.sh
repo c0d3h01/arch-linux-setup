@@ -169,13 +169,13 @@ install_base_system() {
         amd-ucode xf86-video-amdgpu
         xf86-input-libinput
         libva-mesa-driver mesa-vdpau
-        mesa corectl gvfs
+        mesa gvfs
         vulkan-radeon vulkan-tools
         vulkan-icd-loader libva-utils 
         
         # System tools
         zram-generator thermald ananicy-cpp
-        alacritty cups
+        alacritty cups rsync
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
@@ -313,13 +313,16 @@ configure_services() {
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
+    systemctl enable reflector.service
 EOF
 }
 
 desktop_install() {
+    arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
-    gnome gnome-terminal gnome-boxes
-    sudo systemctl enable gdm.service
+    pacman -S gnome gnome-terminal gnome-boxes
+    systemctl enable gdm.service
+EOF
 }
 
 archinstall() {
