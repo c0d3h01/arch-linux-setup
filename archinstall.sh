@@ -184,7 +184,9 @@ install_base_system() {
 
         # System tools
         zram-generator thermald ananicy-cpp
-        alacritty cups
+        alacritty cups cachyos-ananicy-rules
+        cachyos-settings cachyos-kernel-manager
+        cachyos-rate-mirrors
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
