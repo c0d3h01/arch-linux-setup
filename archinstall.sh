@@ -157,9 +157,6 @@ install_base_system() {
         linux linux-firmware
         linux-cachyos-autofdo linux-cachyos-autofdo-headers
 
-        # CachyOS Kernel
-        cachyos-linux cachyos-linux-headers
-
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion
