@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2129
-# shellcheck disable=SC2024
-# shellcheck disable=SC2162
-# shellcheck disable=SC2154
+## shellcheck disable=SC2154
 set -e
 #set -x
 #exec > >(tee -i arch_install.log) 2>&1
@@ -132,6 +129,8 @@ install_base_system() {
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
+    # Enable multilib repository
+    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 20 mirrors..."
@@ -143,40 +142,41 @@ install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux linux-firmware
-        linux-zen linux-zen-headers
+        linux linux-firmware sof-firmware 
+        linux-lts linux-lts-headers
 
+        # CPU & GPU Drivers
+        amd-ucode xf86-video-amdgpu
+        xf86-input-libinput gvfs
+        mesa-vdpau mesa vulkan-radeon lib32-vulkan-radeon
+        vulkan-tools vulkan-icd-loader
+        libva-utils libva-mesa-driver
+        
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion
-        snapper vim fastfetch
-        reflector sudo git nano
-        ttf-dejavu ttf-liberation noto-fonts
-        laptop-detect nodejs npm
+        snapper vim fastfetch nodejs npm
+        reflector sudo git nano xclip
+        laptop-detect noto-fonts
+        ttf-dejavu ttf-liberation
+        flatpak ufw-extras
+        ninja gcc gdb cmake clang
+        zram-generator thermald ananicy-cpp
+        alacritty cups rsync
+        
+        # Virtual machine 
         virt-manager qemu-full iptables
         libvirt edk2-ovmf
         dnsmasq bridge-utils
-        vde2 dmidecode xclip
+        vde2 dmidecode
+
+        # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
         python python-pip
         python-numpy python-pandas
         python-scipy python-matplotlib
         python-scikit-learn
-        flatpak ufw-extras
-        ninja gcc gdb cmake clang
-
-        # CPU & GPU Drivers
-        amd-ucode xf86-video-amdgpu
-        xf86-input-libinput
-        libva-mesa-driver mesa-vdpau
-        mesa gvfs
-        vulkan-radeon vulkan-tools
-        vulkan-icd-loader libva-utils 
-        
-        # System tools
-        zram-generator thermald ananicy-cpp
-        alacritty cups rsync
-
+                
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
         bluez bluez-utils
@@ -187,7 +187,7 @@ install_base_system() {
         firefox zed micro kdeconnect
     )
 
-    pacstrap /mnt "${base_packages[@]}" || error "Failed to install base packages"
+    pacstrap -K /mnt --needed "${base_packages[@]}" || error "Failed to install base packages"
 }
 
 # System configuration function
@@ -212,7 +212,7 @@ configure_system() {
     echo "KEYMAP=us" > "/etc/vconsole.conf"
 
     # Set hostname
-    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
+    hostnamectl hostname ${CONFIG[HOSTNAME]}
 
     # Configure hosts
     tee > /etc/hosts <<-END
@@ -253,6 +253,7 @@ apply_optimizations() {
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
+    sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 20 mirrors..."
@@ -263,14 +264,31 @@ apply_optimizations() {
     
 # ZRAM configuration
 tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
-[zram0]
-zram-size = ram
+[zram0] 
 compression-algorithm = zstd
+zram-size = ram
+swap-priority = 100
+fs-type = swap
 ZRAMCONF
 
 # ZRAM Rules
 tee > "/etc/udev/rules.d/99-zram.rules" <<'ZRULES'
-ACTION=="add", KERNEL=="zram0", ATTR{comp_algorithm}="zstd", ATTR{disksize}="4G", RUN="/usr/bin/mkswap -U clear /dev/%k", TAG+="systemd"
+# Prefer to recompress only huge pages. This will result in additional memory
+# savings, but may slightly increase CPU load due to additional compression
+# overhead.
+ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
+  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
+
+TEST!="/dev/zram0", GOTO="zram_end"
+
+# Since ZRAM stores all pages in compressed form in RAM, we should prefer
+# preempting anonymous pages more than a page (file) cache.  Preempting file
+# pages may not be desirable because a process may want to access a file at any
+# time, whereas if it is preempted, it will cause an additional read cycle from
+# the disk.
+SYSCTL{vm.swappiness}="150"
+
+LABEL="zram_end"
 ZRULES
 
 # Reflector timer set
@@ -281,21 +299,19 @@ tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
 --latest 5
 REFCONF
 
-# Hybrid graphics/AMD Dynamic Switchable Graphics
-echo OFF > /sys/kernel/debug/vgaswitcheroo/switch
-
-# Automatic fan control
-echo "2" > /sys/class/drm/card0/device/hwmon/hwmon0/pwm1_enable
+# Enable the kernel module for AMD GPU
+modprobe amdgpu
+echo "amdgpu" > "/etc/modules-load.d/amdgpu.conf"
 
 # Turn vsync off
-tee > "~/.drirc" <<'VSYNC'
+tee "$HOME/.drirc" <<'VSYNC'
 <driconf>
     <device screen="0" driver="dri2">
         <application name="Default">
             <option name="vblank_mode" value="0" />
         </application>
     </device>
-    ...
+    <!-- Additional configuration -->
 </driconf>
 VSYNC
 EOF
