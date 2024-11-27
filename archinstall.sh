@@ -145,7 +145,7 @@ install_base_system() {
     local base_packages=(
         # Core System
         base base-devel
-        linux linux-firmware sof-firmware 
+        linux linux-firmware sof-firmware
         linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
@@ -154,7 +154,7 @@ install_base_system() {
         mesa-vdpau mesa vulkan-radeon lib32-vulkan-radeon
         vulkan-tools vulkan-icd-loader
         libva-utils libva-mesa-driver
-        
+
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion
@@ -166,12 +166,6 @@ install_base_system() {
         ninja gcc gdb cmake clang
         zram-generator thermald ananicy-cpp
         alacritty cups rsync
-        
-        # Virtual machine 
-        virt-manager qemu-full iptables
-        libvirt edk2-ovmf
-        dnsmasq bridge-utils
-        vde2 dmidecode
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
@@ -179,7 +173,7 @@ install_base_system() {
         python-numpy python-pandas
         python-scipy python-matplotlib
         python-scikit-learn
-                
+
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
         bluez bluez-utils
@@ -403,9 +397,9 @@ usrsetup() {
     sudo systemctl enable ufw
 
     # Set up Android SDK and NDK environment variables
-    echo 'export PATH="/opt/android-ndk:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
-    echo 'export PATH="/opt/android-sdk:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
-    echo 'export PATH="/opt/flutter:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
+    echo 'export PATH="/opt/android-ndk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
+    echo 'export PATH="/opt/android-sdk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
+    echo 'export PATH="/opt/flutter:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
 }
 
 # Main execution function
