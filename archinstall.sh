@@ -2,6 +2,7 @@
 # shellcheck disable=SC2162
 # shellcheck disable=SC2129
 # shellcheck disable=SC2024
+# shellcheck disable=SC2016
 set -e
 #set -x
 #exec > >(tee -i arch_install.log) 2>&1
