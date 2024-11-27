@@ -336,7 +336,8 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     # Desktop Environment GNOME
-    pacman -S gnome gnome-terminal gnome-boxes
+    pacman -S --needed --noconfirm gnome \ 
+    gnome-terminal gnome-boxes
     systemctl enable gdm.service
 EOF
 }
