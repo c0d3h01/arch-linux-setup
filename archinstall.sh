@@ -300,8 +300,8 @@ tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
 REFCONF
 
 # Enable the kernel module for AMD GPU
-modprobe amdgpu
-echo "amdgpu" > "/etc/modules-load.d/amdgpu.conf"
+#modprobe amdgpu
+#echo "amdgpu" > "/etc/modules-load.d/amdgpu.conf"
 
 # Turn vsync off
 tee "$HOME/.drirc" <<'VSYNC'
@@ -330,6 +330,7 @@ configure_services() {
     systemctl enable ananicy-cpp.service
     systemctl enable cups
     systemctl enable reflector.service
+    systemctl enable gdm
 EOF
 }
 
@@ -338,7 +339,6 @@ desktop_install() {
     # Desktop Environment GNOME
     pacman -S --needed --noconfirm gnome \ 
     gnome-terminal gnome-boxes
-    systemctl enable gdm.service
 EOF
 }
 
