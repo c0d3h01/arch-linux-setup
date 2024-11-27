@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-## shellcheck disable=SC2154
+# shellcheck disable=SC2162
+# shellcheck disable=SC2129
+# shellcheck disable=SC2024
 set -e
 #set -x
 #exec > >(tee -i arch_install.log) 2>&1
@@ -399,11 +401,10 @@ usrsetup() {
     sudo systemctl enable docker
     sudo systemctl enable ufw
 
-    # Configure Android SDK
-    sudo echo "export ANDROID_HOME=\$HOME/Android/Sdk" >>"~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_HOME/tools:\$ANDROID_HOME/platform-tools" >>"~/.bashrc"
-    sudo echo "export ANDROID_NDK_ROOT=/opt/android-ndk" >>"~/.bashrc"
-    sudo echo "export PATH=\$PATH:\$ANDROID_NDK_ROOT" >>"~/.bashrc"
+    # Set up Android SDK and NDK environment variables
+    echo 'export PATH="/opt/android-ndk:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
+    echo 'export PATH="/opt/android-sdk:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
+    echo 'export PATH="/opt/flutter:$PATH"' >> "/home/${CONFIG[USERNAME]}/.bashrc"
 }
 
 # Main execution function
