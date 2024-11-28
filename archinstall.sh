@@ -240,24 +240,10 @@ HOST
 EOF
 }
 
-chaotic-aur() {
-    pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-    pacman-key --lsign-key 3056513887B78AEB
-    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
-    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-    echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf >/dev/null
-}
-
-# Export the function for use in arch-chroot
-export -f chaotic-aur
-
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
-
-    # Chaotic-AUR install
-    chaotic-aur
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -269,7 +255,7 @@ apply_optimizations() {
     reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
-    pacman -Syy --needed --noconfrim ananicy-rules-git wine-stable preload
+    pacman -Syy --needed --noconfrim
     
     # Reflector timer set
     tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
@@ -325,7 +311,6 @@ configure_services() {
     systemctl enable cups
     systemctl enable reflector.timer
     systemctl enable gdm
-    systemctl enable preload
 EOF
 }
 
@@ -353,8 +338,22 @@ archinstall() {
     success "Installation completed! You can now reboot your system."
 }
 
+chaotic-aur() {
+    pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key 3056513887B78AEB
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+    echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf >/dev/null
+}
+
+# Export the function
+export -f chaotic-aur
+
 # User environment setup function
 usrsetup() {
+
+    chaotic-aur
+    
     # Yay installation AUR pkg manager
     git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
@@ -370,6 +369,7 @@ usrsetup() {
         zoom linutil-bin \
         docker-desktop \
         gparted \
+        ananicy-rules-git wine-stable preload \
         visual-studio-code-bin \
         android-ndk \
         android-sdk \
@@ -393,7 +393,8 @@ usrsetup() {
     # Enable services
     sudo systemctl enable docker
     sudo systemctl enable ufw
-
+    sudo systemctl enable --now preload
+    
     # Set up Android SDK and NDK environment variables
     echo 'export PATH="/opt/android-ndk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
     echo 'export PATH="/opt/android-sdk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
