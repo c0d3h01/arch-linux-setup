@@ -185,7 +185,7 @@ function install_base_system() {
         # Daily Usage Needs
         firefox zed micro kdeconnect
     )
-    pacstrap -C /etc/pacman.conf -c -i /mnt --needed "${base_packages[@]}"
+    pacstrap -K -i /mnt --needed "${base_packages[@]}"
 }
 
 # System configuration function
