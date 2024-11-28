@@ -5,7 +5,7 @@
 # shellcheck disable=SC2016
 set -euxo pipefail
 mkdir -p /mnt/var/log/installation
-exec > >(tee -i /mnt/var/log/installation/arch_install.log) 2>&1
+#exec > >(tee -i /mnt/var/log/installation/arch_install.log) 2>&1
 
 # ==============================================================================
 # Arch Linux Installation Script
@@ -185,7 +185,7 @@ function install_base_system() {
         # Daily Usage Needs
         firefox zed micro kdeconnect
     )
-    pacstrap -K -i /mnt --needed "${base_packages[@]}"
+    pacstrap -K /mnt --needed "${base_packages[@]}"
 }
 
 # System configuration function
