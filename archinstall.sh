@@ -255,7 +255,7 @@ apply_optimizations() {
     reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
-    pacman -Syy --needed --noconfrim
+    pacman -Syy --needed --noconfirm
     
     # Reflector timer set
     tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
