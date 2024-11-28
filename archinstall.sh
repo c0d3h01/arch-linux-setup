@@ -3,9 +3,9 @@
 # shellcheck disable=SC2129
 # shellcheck disable=SC2024
 # shellcheck disable=SC2016
-set -e
-#set -x
-#exec > >(tee -i arch_install.log) 2>&1
+set -euxo pipefail
+mkdir -p /mnt/var/log/installation
+exec > >(tee -i /mnt/var/log/installation/arch_install.log) 2>&1
 
 # ==============================================================================
 # Arch Linux Installation Script
@@ -43,7 +43,7 @@ function init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:3,commit=120,discard=async,autodefrag"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=120,discard=async,autodefrag"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -129,15 +129,16 @@ function install_base_system() {
     info "Installing base system..."
 
     # Pacman configure for arch-iso
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
+    
     # Enable multilib repository
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
-    info "Updating mirrorlist with the latest 20 mirrors..."
-    reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    # Update the mirrorlist with the 10 latest HTTPS mirrors sorted by rate
+    info "Updating mirrorlist with the latest 10 mirrors..."
+    reflector --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
 
     # Refresh package databases
     pacman -Syy
@@ -166,6 +167,8 @@ function install_base_system() {
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
         alacritty cups rsync
+        profile-sync-daemon irqbalance
+
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
@@ -183,8 +186,7 @@ function install_base_system() {
         # Daily Usage Needs
         firefox zed micro kdeconnect
     )
-
-    pacstrap -K /mnt --needed "${base_packages[@]}" || error "Failed to install base packages"
+    pacstrap -C /etc/pacman.conf -c -i /mnt --needed "${base_packages[@]}"
 }
 
 # System configuration function
@@ -245,14 +247,14 @@ function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
 
-    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    # Update the mirrorlist with the 20 latest HTTPS mirrors sorted by rate
-    info "Updating mirrorlist with the latest 20 mirrors..."
-    reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    # Update the mirrorlist with the 10 latest HTTPS mirrors sorted by rate
+    info "Updating mirrorlist with the latest 10 mirrors..."
+    reflector --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
     pacman -Syy --needed --noconfirm
@@ -268,7 +270,7 @@ REFCONF
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
-compression-algorithm = zstd
+compression-algorithm = lz4
 zram-size = ram
 swap-priority = 100
 fs-type = swap
@@ -311,6 +313,7 @@ function configure_services() {
     systemctl enable cups
     systemctl enable reflector.timer
     systemctl enable gdm
+    systemctl enable irqbalance
 EOF
 }
 
@@ -386,6 +389,7 @@ function usrsetup() {
     sudo ufw allow ssh
     sudo ufw allow http
     sudo ufw allow https
+    ufw allow from 192.168.0.0/16
     sudo ufw allow 1714:1764/udp
     sudo ufw allow 1714:1764/tcp
     sudo ufw logging on
