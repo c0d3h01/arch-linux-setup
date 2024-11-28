@@ -21,7 +21,7 @@ NC='\033[0m'
 declare -A CONFIG
 
 # Configuration function
-init_config() {
+function init_config() {
 
     while true; do
         read -s -p "Enter a single password for root and user: " PASSWORD
@@ -53,14 +53,14 @@ init_config() {
 # Logging functions
 function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
 function warn() { echo -e "${YELLOW}WARN: $* ${NC}"; }
-error() {
+function error() {
     echo -e "${RED}ERROR: $* ${NC}" >&2
     exit 1
 }
-success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
+function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
-setup_disk() {
+function setup_disk() {
     info "Preparing disk partitions..."
 
     # Safety check
@@ -89,7 +89,7 @@ setup_disk() {
 }
 
 # Filesystem setup function
-setup_filesystems() {
+function setup_filesystems() {
     info "Setting up filesystems..."
 
     # Format partitions
@@ -125,7 +125,7 @@ setup_filesystems() {
 }
 
 # Base system installation function
-install_base_system() {
+function install_base_system() {
     info "Installing base system..."
 
     # Pacman configure for arch-iso
@@ -188,7 +188,7 @@ install_base_system() {
 }
 
 # System configuration function
-configure_system() {
+function configure_system() {
     info "Configuring system..."
 
     # Generate fstab
@@ -241,7 +241,7 @@ EOF
 }
 
 # Performance optimization function
-apply_optimizations() {
+function apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
 
@@ -299,7 +299,7 @@ EOF
 }
 
 # Services configuration function
-configure_services() {
+function configure_services() {
     info "Configuring services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
@@ -315,14 +315,14 @@ EOF
 }
 
 # Desktop Environment GNOME
-desktop_install() {
+function desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm gnome \ 
     gnome-terminal gnome-boxes gnome-tweaks
 EOF
 }
 
-archinstall() {
+function archinstall() {
     info "Starting Arch Linux installation script..."
     init_config
 
@@ -338,7 +338,7 @@ archinstall() {
     success "Installation completed! You can now reboot your system."
 }
 
-chaotic-aur() {
+function chaotic-aur() {
     pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
     pacman-key --lsign-key 3056513887B78AEB
     pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
@@ -350,7 +350,7 @@ chaotic-aur() {
 export -f chaotic-aur
 
 # User environment setup function
-usrsetup() {
+function usrsetup() {
 
     chaotic-aur
     
@@ -402,7 +402,7 @@ usrsetup() {
 }
 
 # Main execution function
-main() {
+function main() {
     case "$1" in
     "--install" | "-i")
         archinstall
@@ -427,7 +427,7 @@ main() {
 
 }
 
-show_help() {
+function show_help() {
     tee <<EOF
 Usage: $(basename "$0") [OPTION]
 
