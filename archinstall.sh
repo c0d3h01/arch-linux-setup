@@ -269,7 +269,7 @@ REFCONF
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
 compression-algorithm = lz4
-zram-size = max
+zram-size = ram
 swap-priority = 100
 fs-type = swap
 ZRAMCONF
