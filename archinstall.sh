@@ -163,12 +163,11 @@ function install_base_system() {
         reflector sudo git nano xclip
         laptop-detect noto-fonts
         ttf-dejavu ttf-liberation
-        flatpak ufw-extras
+        flatpak ufw-extras xorg
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
         alacritty cups rsync
         profile-sync-daemon irqbalance
-
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
@@ -271,7 +270,7 @@ REFCONF
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
 compression-algorithm = lz4
-zram-size = ram
+zram-size = max
 swap-priority = 100
 fs-type = swap
 ZRAMCONF
