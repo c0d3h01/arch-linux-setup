@@ -51,13 +51,13 @@ init_config() {
 }
 
 # Logging functions
-info() { echo -e "${BLUE}INFO:${NC} $*"; }
-warn() { echo -e "${YELLOW}WARN:${NC} $*"; }
+function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
+function warn() { echo -e "${YELLOW}WARN: $* ${NC}"; }
 error() {
-    echo -e "${RED}ERROR:${NC} $*" >&2
+    echo -e "${RED}ERROR: $* ${NC}" >&2
     exit 1
 }
-success() { echo -e "${GREEN}SUCCESS:${NC} $*"; }
+success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
 setup_disk() {
@@ -162,9 +162,9 @@ install_base_system() {
         reflector sudo git nano xclip
         laptop-detect noto-fonts
         ttf-dejavu ttf-liberation
-        flatpak ufw-extras
+        flatpak ufw-extras preload
         ninja gcc gdb cmake clang
-        zram-generator thermald ananicy-cpp
+        zram-generator ananicy-cpp
         alacritty cups rsync
 
         # Dev tools
@@ -212,15 +212,13 @@ configure_system() {
     hostnamectl hostname ${CONFIG[HOSTNAME]}
 
     # Configure hosts
-    tee > /etc/hosts <<-END
-# Standard host addresses
+    tee > /etc/hosts <<'HOST'
 127.0.0.1  localhost
 ::1        localhost ip6-localhost ip6-loopback
 ff02::1    ip6-allnodes
 ff02::2    ip6-allrouters
-# This host address
 127.0.1.1  ${CONFIG[HOSTNAME]}
-END
+HOST
 
     # Set root password
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
@@ -242,10 +240,24 @@ END
 EOF
 }
 
+chaotic-aur() {
+    pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+    pacman-key --lsign-key 3056513887B78AEB
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+    pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+    echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf >/dev/null
+}
+
+# Export the function for use in arch-chroot
+export -f chaotic-aur
+
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
+
+    # Chaotic-AUR install
+    chaotic-aur
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -257,10 +269,18 @@ apply_optimizations() {
     reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
-    pacman -Syy
+    pacman -Syy --needed --noconfrim ananicy-rules-git wine-stable
     
-# ZRAM configuration
-tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
+    # Reflector timer set
+    tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
+--save /etc/pacman.d/mirrorlist
+--country India
+--protocol https
+--latest 5
+REFCONF
+
+    # ZRAM configuration
+    tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
 compression-algorithm = zstd
 zram-size = ram
@@ -268,49 +288,27 @@ swap-priority = 100
 fs-type = swap
 ZRAMCONF
 
-# ZRAM Rules
-tee > "/etc/udev/rules.d/99-zram.rules" <<'ZRULES'
+    # ZRAM Rules
+    tee > "/etc/udev/rules.d/99-zram.rules" <<'ZRULES'
 # Prefer to recompress only huge pages. This will result in additional memory
 # savings, but may slightly increase CPU load due to additional compression
 # overhead.
 ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
   RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
-
 TEST!="/dev/zram0", GOTO="zram_end"
-
-# Since ZRAM stores all pages in compressed form in RAM, we should prefer
-# preempting anonymous pages more than a page (file) cache.  Preempting file
-# pages may not be desirable because a process may want to access a file at any
-# time, whereas if it is preempted, it will cause an additional read cycle from
-# the disk.
 SYSCTL{vm.swappiness}="150"
-
 LABEL="zram_end"
 ZRULES
 
-# Reflector timer set
-tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
---save /etc/pacman.d/mirrorlist
---country India
---protocol https
---latest 5
-REFCONF
-
-# Enable the kernel module for AMD GPU
-#modprobe amdgpu
-#echo "amdgpu" > "/etc/modules-load.d/amdgpu.conf"
-
-# Turn vsync off
-tee "$HOME/.drirc" <<'VSYNC'
-<driconf>
-    <device screen="0" driver="dri2">
-        <application name="Default">
-            <option name="vblank_mode" value="0" />
-        </application>
-    </device>
-    <!-- Additional configuration -->
-</driconf>
-VSYNC
+    # I/O Schedulers
+    tee > "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IOSHED'
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+IOSHED
 EOF
 }
 
@@ -319,23 +317,23 @@ configure_services() {
     info "Configuring services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
-    systemctl enable thermald
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
-    systemctl enable reflector.service
+    systemctl enable reflector.timer
     systemctl enable gdm
+    systemctl enable preload
 EOF
 }
 
+# Desktop Environment GNOME
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
-    # Desktop Environment GNOME
     pacman -S --needed --noconfirm gnome \ 
-    gnome-terminal gnome-boxes
+    gnome-terminal gnome-boxes gnome-tweaks
 EOF
 }
 
