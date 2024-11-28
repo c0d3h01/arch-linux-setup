@@ -4,8 +4,7 @@
 # shellcheck disable=SC2024
 # shellcheck disable=SC2016
 set -euxo pipefail
-mkdir -p /mnt/var/log/installation
-#exec > >(tee -i /mnt/var/log/installation/arch_install.log) 2>&1
+#exec > >(tee -i /mnt/var/log/arch_install.log) 2>&1
 
 # ==============================================================================
 # Arch Linux Installation Script
