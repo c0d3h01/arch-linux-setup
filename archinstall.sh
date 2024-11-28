@@ -319,8 +319,7 @@ EOF
 # Desktop Environment GNOME
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm gnome \ 
-    gnome-terminal gnome-boxes gnome-tweaks
+    pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes gnome-tweaks
 EOF
 }
 
