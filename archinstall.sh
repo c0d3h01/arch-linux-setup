@@ -144,8 +144,7 @@ install_base_system() {
 
     local base_packages=(
         # Core System
-        base base-devel
-        linux linux-firmware sof-firmware
+        base base-devel sof-firmware
         linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
