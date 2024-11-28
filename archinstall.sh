@@ -165,7 +165,7 @@ function install_base_system() {
         flatpak ufw-extras xorg
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
-        alacritty cups rsync
+        alacritty cups rsync glances
         profile-sync-daemon irqbalance
 
         # Dev tools
