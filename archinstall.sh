@@ -162,7 +162,7 @@ install_base_system() {
         reflector sudo git nano xclip
         laptop-detect noto-fonts
         ttf-dejavu ttf-liberation
-        flatpak ufw-extras preload
+        flatpak ufw-extras
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
         alacritty cups rsync
@@ -269,7 +269,7 @@ apply_optimizations() {
     reflector --country India --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
-    pacman -Syy --needed --noconfrim ananicy-rules-git wine-stable
+    pacman -Syy --needed --noconfrim ananicy-rules-git wine-stable preload
     
     # Reflector timer set
     tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
