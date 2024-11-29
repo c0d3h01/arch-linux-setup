@@ -151,7 +151,8 @@ function install_base_system() {
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
         xf86-input-libinput gvfs
-        mesa-vdpau mesa vulkan-radeon lib32-vulkan-radeon
+        mesa-vdpau mesa lib32-mesa 
+        lib32-glibc vulkan-radeon lib32-vulkan-radeon
         vulkan-tools vulkan-icd-loader
         libva-utils libva-mesa-driver
 
@@ -162,11 +163,17 @@ function install_base_system() {
         reflector sudo git nano xclip
         laptop-detect noto-fonts
         ttf-dejavu ttf-liberation
-        flatpak ufw-extras xorg
+        flatpak ufw-extras xorg htop
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
         alacritty cups rsync glances
-        profile-sync-daemon irqbalance
+        irqbalance tlp tlp-rdw
+
+        virt-manager qemu-desktop 
+        libvirt edk2-ovmf dnsmasq vde2 bridge-utils 
+        iptables-nft dmidecode libguestfs 
+        qemu-emulators-full qemu-block-iscsi 
+        qemu-block-gluster samba
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
@@ -174,10 +181,6 @@ function install_base_system() {
         python-numpy python-pandas
         python-scipy python-matplotlib
         python-scikit-learn
-
-        qemu-full virt-manager libvirt 
-        edk2-ovmf swtpm qemu-user-static 
-        qemu-block-gluster qemu-block-iscsi
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
@@ -223,6 +226,17 @@ ff02::1    ip6-allnodes
 ff02::2    ip6-allrouters
 127.0.1.1  ${CONFIG[HOSTNAME]}
 HOST
+
+    # Configure Cloudflare DNS
+    mkdir -p /etc/systemd
+    tee > /etc/systemd/resolved.conf <<'DNSCONF'
+[Resolve]
+DNS=1.1.1.1 1.0.0.1 9.9.9.9
+FallbackDNS=8.8.8.8 8.8.4.4
+Domains=~.
+DNSSEC=yes
+DNSOverTLS=opportunistic
+DNSCONF
 
     # Set root password
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
@@ -302,6 +316,85 @@ IOSHED
 
 echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf >/dev/null
 
+    tee > "/usr/lib/NetworkManager/conf.d/dns.conf" <<'NTM'
+[main]
+dns=systemd-resolved
+NTM
+
+    tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
+# The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
+# A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
+# and a value of 100 means IO cost is assumed to be equal.
+vm.swappiness = 100
+
+# The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
+# Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
+vm.vfs_cache_pressure=50
+
+# Contains, as a bytes of total available memory that contains free pages and reclaimable
+# pages, the number of pages at which a process which is generating disk writes will itself start
+# writing out dirty data.
+vm.dirty_bytes = 268435456
+
+# page-cluster controls the number of pages up to which consecutive pages are read in from swap in a single attempt.
+# This is the swap counterpart to page cache readahead. The mentioned consecutivity is not in terms of virtual/physical addresses,
+# but consecutive on swap space - that means they were swapped out together. (Default is 3)
+# increase this value to 1 or 2 if you are using physical swap (1 if ssd, 2 if hdd)
+vm.page-cluster = 0
+
+# Contains, as a bytes of total available memory that contains free pages and reclaimable
+# pages, the number of pages at which the background kernel flusher threads will start writing out
+# dirty data.
+vm.dirty_background_bytes = 134217728
+
+# The kernel flusher threads will periodically wake up and write old data out to disk.  This
+# tunable expresses the interval between those wakeups, in 100'ths of a second (Default is 500).
+vm.dirty_writeback_centisecs = 1500
+
+# This action will speed up your boot and shutdown, because one less module is loaded. Additionally disabling watchdog timers increases performance and lowers power consumption
+# Disable NMI watchdog
+kernel.nmi_watchdog = 0
+
+# Enable the sysctl setting kernel.unprivileged_userns_clone to allow normal users to run unprivileged containers.
+kernel.unprivileged_userns_clone = 1
+
+# To hide any kernel messages from the console
+kernel.printk = 3 3 3 3
+
+# Restricting access to kernel pointers in the proc filesystem
+kernel.kptr_restrict = 2
+
+# Disable Kexec, which allows replacing the current running kernel.
+kernel.kexec_load_disabled = 1
+
+# Enable TCP Fast Open
+# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
+# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
+# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
+net.ipv4.tcp_fastopen = 3
+
+# TCP Enable ECN Negotiation for both outgoing and incoming connections
+net.ipv4.tcp_ecn = 1
+
+# TCP Reduce performance spikes
+net.ipv4.tcp_timestamps = 0
+
+# Increase netdev receive queueMay help prevent losing packets
+net.core.netdev_max_backlog = 16384
+
+# Disable TCP slow start after idle
+# Helps kill persistent single connection performance
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
+net.ipv4.tcp_rfc1337 = 1
+
+# Set size of file handles and inode cache
+fs.file-max = 2097152
+
+# Increase writeback interval  for xfs
+fs.xfs.xfssyncd_centisecs = 10000
+KSHED
 EOF
 }
 
@@ -311,6 +404,7 @@ function configure_services() {
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
     systemctl enable NetworkManager
+    systemctl enable systemd-resolved
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
@@ -321,6 +415,9 @@ function configure_services() {
     systemctl enable irqbalance
     systemctl enable libvirtd
     virsh net-autostart default
+    systemctl enable tlp.service
+    systemctl enable NetworkManager-dispatcher.service
+    systemctl mask systemd-rfkill.service systemd-rfkill.socket
 EOF
 }
 
