@@ -314,8 +314,6 @@ ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
 IOSHED
 
-echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | tee -a /etc/pacman.conf >/dev/null
-
     tee > "/usr/lib/NetworkManager/conf.d/dns.conf" <<'NTM'
 [main]
 dns=systemd-resolved
@@ -424,7 +422,7 @@ EOF
 # Desktop Environment GNOME
 function desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes gnome-tweaks
+    pacman -S --needed --noconfirm gnome gnome-terminal
 EOF
 }
 
@@ -444,21 +442,8 @@ function archinstall() {
     success "Installation completed! You can now reboot your system."
 }
 
-function chaotic-aur() {
-    sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-    sudo pacman-key --lsign-key 3056513887B78AEB
-    sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
-    sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-}
-
-# Export the function
-export -f chaotic-aur
-
 # User environment setup function
 function usrsetup() {
-
-    chaotic-aur
-
     # Yay installation AUR pkg manager
     git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
