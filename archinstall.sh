@@ -131,7 +131,7 @@ function install_base_system() {
     sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
-    
+
     # Enable multilib repository
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
@@ -144,7 +144,7 @@ function install_base_system() {
 
     local base_packages=(
         # Core System
-        base base-devel 
+        base base-devel
         linux-lts linux-lts-headers
         linux-firmware sof-firmware
 
@@ -174,6 +174,10 @@ function install_base_system() {
         python-numpy python-pandas
         python-scipy python-matplotlib
         python-scikit-learn
+
+        qemu-full virt-manager libvirt 
+        edk2-ovmf swtpm qemu-user-static 
+        qemu-block-gluster qemu-block-iscsi
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
@@ -315,6 +319,8 @@ function configure_services() {
     systemctl enable reflector.timer
     systemctl enable gdm
     systemctl enable irqbalance
+    systemctl enable libvirtd
+    virsh net-autostart default
 EOF
 }
 
@@ -355,7 +361,7 @@ export -f chaotic-aur
 function usrsetup() {
 
     chaotic-aur
-    
+
     # Yay installation AUR pkg manager
     git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
@@ -397,7 +403,7 @@ function usrsetup() {
     sudo systemctl enable docker
     sudo systemctl enable ufw
     sudo systemctl enable --now preload
-    
+
     # Set up Android SDK and NDK environment variables
     echo 'export PATH="/opt/android-ndk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
     echo 'export PATH="/opt/android-sdk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
