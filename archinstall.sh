@@ -133,7 +133,7 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    sudo reflector --verbose --country India --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    reflector --latest 4 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
     
     # Refresh package databases
     pacman -Syy
@@ -246,13 +246,13 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    reflector --verbose --country India --latest 5 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-
+    reflector --latest 4 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
+    
     tee > "/etc/xdg/reflector/reflector.conf" <<'REFCONF'
 --save /etc/pacman.d/mirrorlist
 --country India
 --protocol https
---latest 5
+--latest 4
 REFCONF
 
     # Refresh package databases
