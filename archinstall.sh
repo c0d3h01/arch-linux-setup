@@ -42,7 +42,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:3,commit=300,space_cache=v2,ssd,discard=async,autodefrag"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=30,discard=async"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -128,17 +128,16 @@ install_base_system() {
     info "Installing base system..."
 
     # Pacman configure for arch-iso
-    #sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
-
-    # Enable multilib repository
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    # Update the mirrorlist with the 10 latest HTTPS mirrors sorted by rate
-    info "Updating mirrorlist with the latest 10 mirrors..."
-    reflector --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
+    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+MIRROR
 
     # Refresh package databases
     pacman -Syy
@@ -169,12 +168,6 @@ install_base_system() {
         zram-generator ananicy-cpp
         alacritty cups rsync glances
         irqbalance tlp tlp-rdw
-
-        virt-manager qemu-desktop 
-        libvirt edk2-ovmf dnsmasq vde2 bridge-utils 
-        iptables-nft dmidecode libguestfs 
-        qemu-emulators-full qemu-block-iscsi 
-        qemu-block-gluster samba
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
@@ -252,23 +245,16 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
 
-    # sed -i 's/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    # Reflector timer set
-    tee > "/etc/xdg/reflector/reflector.conf" <<'REFCONF'
---latest 10
---sort rate
---protocol https
---save /etc/pacman.d/mirrorlist
-REFCONF
-
-    # Update the mirrorlist with the 10 latest HTTPS mirrors sorted by rate
-    info "Updating mirrorlist with the latest 10 mirrors..."
-    reflector --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
+    mv "/etc/pacman.d/mirrorlist" "/etc/pacman.d/mirrorlist.bak"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+MIRROR
     
     # Refresh package databases
     pacman -Syy --needed --noconfirm
@@ -303,24 +289,13 @@ ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="
 # NVMe SSD
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
 IOSHED
-
-# Cloudflare DNS setup 
-    tee > "/etc/resolv.conf" <<'RSOL'
-nameserver 1.1.1.1
-nnameserver 1.0.0.1
-RSOL
-
-    tee > "/etc/systemd/resolved.conf" <<'SYSR'
-[Resolve]
-DNS=1.1.1.1
-SYSR
 EOF
 }
 
 # Desktop Environment GNOME
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm gnome gnome-terminal
+    pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
 EOF
 }
 
@@ -330,20 +305,14 @@ configure_services() {
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
     systemctl enable NetworkManager
-    systemctl enable systemd-resolved
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
-    systemctl enable reflector.timer
     systemctl enable gdm
     systemctl enable irqbalance
-    systemctl enable libvirtd
-    virsh net-autostart default
     systemctl enable tlp.service
-    systemctl enable NetworkManager-dispatcher.service
-    systemctl mask systemd-rfkill.service systemd-rfkill.socket
 EOF
 }
 
@@ -397,7 +366,6 @@ usrsetup() {
     sudo ufw allow ssh
     sudo ufw allow http
     sudo ufw allow https
-    sudo ufw allow from 192.168.0.0/16
     sudo ufw allow 1714:1764/udp
     sudo ufw allow 1714:1764/tcp
     sudo ufw logging on
