@@ -359,20 +359,9 @@ usrsetup() {
         youtube-music-bin \
         notion-app-electron
 
-    # Configure firewall
-    sudo ufw enable
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow http
-    sudo ufw allow https
-    sudo ufw allow 1714:1764/udp
-    sudo ufw allow 1714:1764/tcp
-    sudo ufw logging on
-
     # Enable services
     sudo systemctl enable docker
-    sudo systemctl enable --now ufw
+    sudo systemctl enable --now firewalld
     sudo systemctl enable --now preload
 
     # Set up variables
