@@ -313,6 +313,7 @@ configure_services() {
     systemctl enable gdm
     systemctl enable irqbalance
     systemctl enable tlp.service
+    systemctl enable --now firewalld
 EOF
 }
 
@@ -361,7 +362,6 @@ usrsetup() {
 
     # Enable services
     sudo systemctl enable docker
-    sudo systemctl enable --now firewalld
     sudo systemctl enable --now preload
 
     # Set up variables
