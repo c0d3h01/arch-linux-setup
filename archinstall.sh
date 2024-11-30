@@ -133,7 +133,7 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    reflector --latest 4 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
+    echo -e "Server = http://mirror.sahil.world/archlinux/\$repo/os/\$arch\nServer = https://mirror.sahil.world/archlinux/\$repo/os/\$arch" | tee /etc/pacman.d/mirrorlist > /dev/null
     
     # Refresh package databases
     pacman -Syy
@@ -245,15 +245,8 @@ apply_optimizations() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-    reflector --latest 4 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
     
-    tee > "/etc/xdg/reflector/reflector.conf" <<'REFCONF'
---save /etc/pacman.d/mirrorlist
---country India
---protocol https
---latest 4
-REFCONF
+    echo -e "Server = http://mirror.sahil.world/archlinux/\$repo/os/\$arch\nServer = https://mirror.sahil.world/archlinux/\$repo/os/\$arch" | tee /etc/pacman.d/mirrorlist > /dev/null
 
     # Refresh package databases
     pacman -Syy --needed --noconfirm
@@ -313,7 +306,6 @@ configure_services() {
     systemctl enable irqbalance
     systemctl enable tlp.service
     systemctl enable firewalld
-    systemctl enable reflector.service
 EOF
 }
 
