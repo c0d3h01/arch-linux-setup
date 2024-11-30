@@ -20,7 +20,7 @@ NC='\033[0m'
 declare -A CONFIG
 
 # Configuration function
-function init_config() {
+init_config() {
 
     while true; do
         read -s -p "Enter a single password for root and user: " PASSWORD
@@ -42,7 +42,7 @@ function init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=120,discard=async,autodefrag"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:3,commit=300,space_cache=v2,ssd,discard=async,autodefrag"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -50,16 +50,16 @@ function init_config() {
 }
 
 # Logging functions
-function info() { echo -e "${BLUE}INFO: $* ${NC}"; }
-function warn() { echo -e "${YELLOW}WARN: $* ${NC}"; }
-function error() {
+info() { echo -e "${BLUE}INFO: $* ${NC}"; }
+warn() { echo -e "${YELLOW}WARN: $* ${NC}"; }
+error() {
     echo -e "${RED}ERROR: $* ${NC}" >&2
     exit 1
 }
-function success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
+success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
-function setup_disk() {
+setup_disk() {
     info "Preparing disk partitions..."
 
     # Safety check
@@ -88,7 +88,7 @@ function setup_disk() {
 }
 
 # Filesystem setup function
-function setup_filesystems() {
+setup_filesystems() {
     info "Setting up filesystems..."
 
     # Format partitions
@@ -124,7 +124,7 @@ function setup_filesystems() {
 }
 
 # Base system installation function
-function install_base_system() {
+install_base_system() {
     info "Installing base system..."
 
     # Pacman configure for arch-iso
@@ -177,10 +177,9 @@ function install_base_system() {
 
         # Dev tools
         rocm-hip-sdk rocm-opencl-sdk
-        python python-pip
+        python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
-        python-scikit-learn
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg
@@ -195,7 +194,7 @@ function install_base_system() {
 }
 
 # System configuration function
-function configure_system() {
+configure_system() {
     info "Configuring system..."
 
     # Generate fstab
@@ -227,17 +226,6 @@ ff02::2    ip6-allrouters
 127.0.1.1  ${CONFIG[HOSTNAME]}
 HOST
 
-    # Configure Cloudflare DNS
-    mkdir -p /etc/systemd
-    tee > /etc/systemd/resolved.conf <<'DNSCONF'
-[Resolve]
-DNS=1.1.1.1 1.0.0.1 9.9.9.9
-FallbackDNS=8.8.8.8 8.8.4.4
-Domains=~.
-DNSSEC=yes
-DNSOverTLS=opportunistic
-DNSCONF
-
     # Set root password
     echo "root:${CONFIG[PASSWORD]}" | chpasswd
 
@@ -259,7 +247,7 @@ EOF
 }
 
 # Performance optimization function
-function apply_optimizations() {
+apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<EOF
 
@@ -268,6 +256,14 @@ function apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
+    # Reflector timer set
+    tee > "/etc/xdg/reflector/reflector.conf" <<'REFCONF'
+--latest 10
+--sort rate
+--protocol https
+--save /etc/pacman.d/mirrorlist
+REFCONF
+
     # Update the mirrorlist with the 10 latest HTTPS mirrors sorted by rate
     info "Updating mirrorlist with the latest 10 mirrors..."
     reflector --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist
@@ -275,19 +271,11 @@ function apply_optimizations() {
     # Refresh package databases
     pacman -Syy --needed --noconfirm
     
-    # Reflector timer set
-    tee > "/etc/xdg/reflector/reflector.conf" <<REFCONF
---save /etc/pacman.d/mirrorlist
---country India
---protocol https
---latest 5
-REFCONF
-
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
 compression-algorithm = zstd
-zram-size = ram
+zram-size = ram * 2
 swap-priority = 100
 fs-type = swap
 ZRAMCONF
@@ -314,90 +302,28 @@ ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
 IOSHED
 
-    tee > "/usr/lib/NetworkManager/conf.d/dns.conf" <<'NTM'
-[main]
-dns=systemd-resolved
-NTM
+# Cloudflare DNS setup 
+    tee > "/etc/resolv.conf" <<'RSOL'
+nameserver 1.1.1.1
+nnameserver 1.0.0.1
+RSOL
 
-    tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
-# The sysctl swappiness parameter determines the kernel's preference for pushing anonymous pages or page cache to disk in memory-starved situations.
-# A low value causes the kernel to prefer freeing up open files (page cache), a high value causes the kernel to try to use swap space,
-# and a value of 100 means IO cost is assumed to be equal.
-vm.swappiness = 100
+    tee > "/etc/systemd/resolved.conf" <<'SYSR'
+[Resolve]
+DNS=1.1.1.1
+SYSR
+EOF
+}
 
-# The value controls the tendency of the kernel to reclaim the memory which is used for caching of directory and inode objects (VFS cache).
-# Lowering it from the default value of 100 makes the kernel less inclined to reclaim VFS cache (do not set it to 0, this may produce out-of-memory conditions)
-vm.vfs_cache_pressure=50
-
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which a process which is generating disk writes will itself start
-# writing out dirty data.
-vm.dirty_bytes = 268435456
-
-# page-cluster controls the number of pages up to which consecutive pages are read in from swap in a single attempt.
-# This is the swap counterpart to page cache readahead. The mentioned consecutivity is not in terms of virtual/physical addresses,
-# but consecutive on swap space - that means they were swapped out together. (Default is 3)
-# increase this value to 1 or 2 if you are using physical swap (1 if ssd, 2 if hdd)
-vm.page-cluster = 0
-
-# Contains, as a bytes of total available memory that contains free pages and reclaimable
-# pages, the number of pages at which the background kernel flusher threads will start writing out
-# dirty data.
-vm.dirty_background_bytes = 134217728
-
-# The kernel flusher threads will periodically wake up and write old data out to disk.  This
-# tunable expresses the interval between those wakeups, in 100'ths of a second (Default is 500).
-vm.dirty_writeback_centisecs = 1500
-
-# This action will speed up your boot and shutdown, because one less module is loaded. Additionally disabling watchdog timers increases performance and lowers power consumption
-# Disable NMI watchdog
-kernel.nmi_watchdog = 0
-
-# Enable the sysctl setting kernel.unprivileged_userns_clone to allow normal users to run unprivileged containers.
-kernel.unprivileged_userns_clone = 1
-
-# To hide any kernel messages from the console
-kernel.printk = 3 3 3 3
-
-# Restricting access to kernel pointers in the proc filesystem
-kernel.kptr_restrict = 2
-
-# Disable Kexec, which allows replacing the current running kernel.
-kernel.kexec_load_disabled = 1
-
-# Enable TCP Fast Open
-# TCP Fast Open is an extension to the transmission control protocol (TCP) that helps reduce network latency
-# by enabling data to be exchanged during the sender’s initial TCP SYN [3].
-# Using the value 3 instead of the default 1 allows TCP Fast Open for both incoming and outgoing connections:
-net.ipv4.tcp_fastopen = 3
-
-# TCP Enable ECN Negotiation for both outgoing and incoming connections
-net.ipv4.tcp_ecn = 1
-
-# TCP Reduce performance spikes
-net.ipv4.tcp_timestamps = 0
-
-# Increase netdev receive queueMay help prevent losing packets
-net.core.netdev_max_backlog = 16384
-
-# Disable TCP slow start after idle
-# Helps kill persistent single connection performance
-net.ipv4.tcp_slow_start_after_idle = 0
-
-# Protect against tcp time-wait assassination hazards, drop RST packets for sockets in the time-wait state. Not widely supported outside of Linux, but conforms to RFC:
-net.ipv4.tcp_rfc1337 = 1
-
-# Set size of file handles and inode cache
-fs.file-max = 2097152
-
-# Increase writeback interval  for xfs
-fs.xfs.xfssyncd_centisecs = 10000
-KSHED
+# Desktop Environment GNOME
+desktop_install() {
+    arch-chroot /mnt /bin/bash <<EOF
+    pacman -S --needed --noconfirm gnome gnome-terminal
 EOF
 }
 
 # Services configuration function
-function configure_services() {
+configure_services() {
     info "Configuring services..."
     arch-chroot /mnt /bin/bash <<EOF
     # Enable system services
@@ -419,14 +345,7 @@ function configure_services() {
 EOF
 }
 
-# Desktop Environment GNOME
-function desktop_install() {
-    arch-chroot /mnt /bin/bash <<EOF
-    pacman -S --needed --noconfirm gnome gnome-terminal
-EOF
-}
-
-function archinstall() {
+archinstall() {
     info "Starting Arch Linux installation script..."
     init_config
 
@@ -443,7 +362,7 @@ function archinstall() {
 }
 
 # User environment setup function
-function usrsetup() {
+usrsetup() {
     # Yay installation AUR pkg manager
     git clone https://aur.archlinux.org/yay-bin.git
     cd yay-bin
@@ -483,17 +402,17 @@ function usrsetup() {
 
     # Enable services
     sudo systemctl enable docker
-    sudo systemctl enable ufw
+    sudo systemctl enable --now ufw
     sudo systemctl enable --now preload
 
-    # Set up Android SDK and NDK environment variables
-    echo 'export PATH="/opt/android-ndk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
-    echo 'export PATH="/opt/android-sdk:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
-    echo 'export PATH="/opt/flutter:$PATH"' >>"/home/${CONFIG[USERNAME]}/.bashrc"
+    # Set up variables
+    sed -i '$a\export PATH="/opt/android-ndk:$PATH"' "/home/c0d3h01/.bashrc"
+    sed -i '$a\export PATH="/opt/android-sdk:$PATH"' "/home/c0d3h01/.bashrc"
+    sed -i '$a\export PATH="/opt/flutter:$PATH"' "/home/c0d3h01/.bashrc"
 }
 
 # Main execution function
-function main() {
+main() {
     case "$1" in
     "--install" | "-i")
         archinstall
@@ -518,7 +437,7 @@ function main() {
 
 }
 
-function show_help() {
+show_help() {
     tee <<EOF
 Usage: $(basename "$0") [OPTION]
 
