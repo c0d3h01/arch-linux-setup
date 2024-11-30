@@ -313,7 +313,7 @@ configure_services() {
     systemctl enable gdm
     systemctl enable irqbalance
     systemctl enable tlp.service
-    systemctl enable --now firewalld
+    systemctl enable firewalld
 EOF
 }
 
