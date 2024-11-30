@@ -288,6 +288,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
+    # lightdm lightdm-gtk-greeter fluxbox xterm xfce4-terminal
 EOF
 }
 
