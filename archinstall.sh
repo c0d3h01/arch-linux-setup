@@ -42,7 +42,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=30,discard=async"
+        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=128,discard=async"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -151,7 +151,7 @@ MIRROR
         # CPU & GPU Drivers
         amd-ucode xf86-video-amdgpu
         xf86-input-libinput gvfs
-        mesa-vdpau mesa lib32-mesa 
+        mesa-vdpau mesa lib32-mesa
         lib32-glibc vulkan-radeon lib32-vulkan-radeon
         vulkan-tools vulkan-icd-loader
         libva-utils libva-mesa-driver
@@ -163,7 +163,7 @@ MIRROR
         reflector sudo git nano xclip
         laptop-detect noto-fonts
         ttf-dejavu ttf-liberation
-        flatpak ufw-extras xorg htop
+        flatpak xorg htop firewalld
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
         alacritty cups rsync glances
@@ -231,7 +231,7 @@ HOST
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
     # Configure bootloader
-    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="nowatchdog nvme_load=YES zswap.enabled=0 zram.enabled=1 splash loglevel=3"|' /etc/default/grub
+    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="nowatchdog zswap.enabled=0 zram.enabled=1 splash loglevel=3"|' /etc/default/grub
     sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
