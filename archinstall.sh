@@ -133,9 +133,8 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    #reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
-
-    tee > "/etc/pacman.d/mirrorlist" <<MIRROR
+    rm -rf "/etc/pacman.d/mirrorlist"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
@@ -199,7 +198,7 @@ configure_system() {
     genfstab -U /mnt >>/mnt/etc/fstab
 
     # Chroot and configure
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<'EOF'
     # Set timezone and clock
     ln -sf /usr/share/zoneinfo/${CONFIG[TIMEZONE]} /etc/localtime
     hwclock --systohc
@@ -247,16 +246,15 @@ EOF
 # Performance optimization function
 apply_optimizations() {
     info "Applying system optimizations..."
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<'EOF'
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-    
-    # reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
 
-    tee > "/etc/pacman.d/mirrorlist" <<MIRROR
+    rm -rf "/etc/pacman.d/mirrorlist"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
@@ -311,7 +309,7 @@ EOF
 
 # Desktop Environment GNOME
 desktop_install() {
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
     pacman -Rns gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany malcontent gnome-software gnome-music gnome-characters
     rm -rf /usr/share/gnome-shell/extensions/*
@@ -323,7 +321,7 @@ EOF
 # Services configuration function
 configure_services() {
     info "Configuring services..."
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<'EOF'
     # Enable system services
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
