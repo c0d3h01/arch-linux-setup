@@ -355,7 +355,7 @@ usrsetup() {
         telegram-desktop-bin \
         onlyoffice-bin \
         tor-browser-bin \
-        vesktop-bin \
+        vesktop-bin ferdium-bin \
         github-desktop-bin \
         zoom linutil-bin \
         docker-desktop \
