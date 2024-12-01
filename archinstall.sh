@@ -133,8 +133,8 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    echo -e "Server = http://mirror.sahil.world/archlinux/\$repo/os/\$arch\nServer = https://mirror.sahil.world/archlinux/\$repo/os/\$arch" | tee /etc/pacman.d/mirrorlist > /dev/null
-    
+    reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
+
     # Refresh package databases
     pacman -Syy
 
@@ -158,7 +158,6 @@ install_base_system() {
         snapper vim fastfetch nodejs npm
         reflector sudo git nano xclip
         laptop-detect noto-fonts
-        ttf-dejavu ttf-liberation
         flatpak xorg htop firewalld
         ninja gcc gdb cmake clang
         zram-generator ananicy-cpp
@@ -178,7 +177,7 @@ install_base_system() {
         pipewire-pulse wireplumber
 
         # Daily Usage Needs
-        firefox zed micro kdeconnect
+        firefox zed micro kdeconnect rhythmbox
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -246,11 +245,19 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
     
-    echo -e "Server = http://mirror.sahil.world/archlinux/\$repo/os/\$arch\nServer = https://mirror.sahil.world/archlinux/\$repo/os/\$arch" | tee /etc/pacman.d/mirrorlist > /dev/null
+    reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
 
     # Refresh package databases
-    pacman -Syy --needed --noconfirm
-    
+    pacman -Syy
+
+    tee > "/etc/xdg/reflector/reflector.conf" <<'MIRROR'
+--save /etc/pacman.d/mirrorlist
+--fastest 5
+--country IN,SG
+--protocol https
+--latest 5
+MIRROR
+
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
@@ -288,7 +295,10 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<EOF
     pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
-    # lightdm lightdm-gtk-greeter fluxbox xterm xfce4-terminal
+    pacman -Rns gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany malcontent gnome-software gnome-music gnome-characters
+    rm -rf /usr/share/gnome-shell/extensions/*
+
+    systemctl enable gdm
 EOF
 }
 
@@ -303,10 +313,10 @@ configure_services() {
     systemctl enable fstrim.timer
     systemctl enable ananicy-cpp.service
     systemctl enable cups
-    systemctl enable gdm
     systemctl enable irqbalance
     systemctl enable tlp.service
     systemctl enable firewalld
+    systemctl enable reflector
 EOF
 }
 
@@ -342,8 +352,7 @@ usrsetup() {
         github-desktop-bin \
         zoom linutil-bin \
         docker-desktop \
-        gparted \
-        ananicy-rules-git wine-stable preload \
+        ananicy-rules-git wine preload \
         visual-studio-code-bin \
         android-ndk \
         android-sdk \
@@ -354,7 +363,6 @@ usrsetup() {
         notion-app-electron
 
     # Enable services
-    sudo systemctl enable docker
     sudo systemctl enable --now preload
 
     # Set up variables
