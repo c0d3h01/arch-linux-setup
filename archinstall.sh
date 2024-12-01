@@ -133,8 +133,17 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
+    #reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
 
+    tee > "/etc/pacman.d/mirrorlist" <<MIRROR
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+MIRROR
+    
     # Refresh package databases
     pacman -Syy
 
@@ -245,7 +254,16 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
     
-    reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
+    # reflector --fastest 5 --protocol https --country IN,SG --latest 5 --sort age --save /etc/pacman.d/mirrorlist
+
+    tee > "/etc/pacman.d/mirrorlist" <<MIRROR
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+MIRROR
 
     # Refresh package databases
     pacman -Syy
