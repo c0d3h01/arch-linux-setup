@@ -303,7 +303,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
-    pacman -Rns --noconfirm gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany malcontent gnome-software gnome-music gnome-characters
+    pacman -Rns --noconfirm gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany yelp malcontent gnome-software gnome-music gnome-characters
     rm -rf /usr/share/gnome-shell/extensions/*
 
     systemctl enable gdm
