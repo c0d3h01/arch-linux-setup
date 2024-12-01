@@ -266,14 +266,6 @@ MIRROR
     # Refresh package databases
     pacman -Syy
 
-    tee > "/etc/xdg/reflector/reflector.conf" <<'MIRROR'
---save /etc/pacman.d/mirrorlist
---fastest 5
---country IN,SG
---protocol https
---latest 5
-MIRROR
-
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
@@ -311,7 +303,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm gnome gnome-terminal gnome-boxes
-    pacman -Rns gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany malcontent gnome-software gnome-music gnome-characters
+    pacman -Rns --noconfirm gnome-calendar gnome-text-editor gnome-tour gnome-user-docs gnome-weather gnome-music epiphany malcontent gnome-software gnome-music gnome-characters
     rm -rf /usr/share/gnome-shell/extensions/*
 
     systemctl enable gdm
@@ -332,7 +324,6 @@ configure_services() {
     systemctl enable irqbalance
     systemctl enable tlp.service
     systemctl enable firewalld
-    systemctl enable reflector
 EOF
 }
 
