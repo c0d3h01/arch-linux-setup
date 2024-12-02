@@ -37,7 +37,7 @@ init_config() {
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
         [HOSTNAME]="archlinux"
-        [USERNAME]="c0d3h01"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
@@ -99,7 +99,7 @@ setup_filesystems() {
     mount "${CONFIG[ROOT_PART]}" /mnt
     pushd /mnt >/dev/null
 
-    local subvolumes=("@" "@home" "@cache" "@srv" "@tmp" "@log" "@pkg" "@.snapshots")
+    local subvolumes=("@" "@home" "@cache" "@tmp" "@log" "@.snapshots")
     for subvol in "${subvolumes[@]}"; do
         btrfs subvolume create "$subvol"
     done
@@ -111,15 +111,13 @@ setup_filesystems() {
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
     # Create mount points
-    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi,tmp,srv}
+    mkdir -p /mnt/{home,var/log,.snapshots,boot/efi,tmp}
 
     # Mount other subvolumes
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@pkg" "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@.snapshots" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
     mount -o "${CONFIG[BTRFS_OPTS]},subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@srv" "${CONFIG[ROOT_PART]}" /mnt/srv
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
@@ -226,9 +224,6 @@ HOST
     
     # Configure sudo
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-
-    # Configure bootloader
-    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 nowatchdog irqpoll amd_pstate=guided processor.max_cstate=1 mitigations=auto"|' /etc/default/grub
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
     grub-mkconfig -o /boot/grub/grub.cfg
@@ -406,7 +401,7 @@ else
     echo "Unsupported shell. This script works with Bash and Fish only."
 fi
 
-    sudo chown -R c0d3h01:c0d3h01 android-sdk
+    sudo chown -R harshal:harshal android-sdk
 }
 
 # Main execution function
