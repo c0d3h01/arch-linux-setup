@@ -169,6 +169,10 @@ MIRROR
         ninja gcc gdb cmake clang
         zram-generator cups rsync glances
         irqbalance tlp tlp-rdw
+        rocm-hip-sdk rocm-opencl-sdk
+        python python-pip python-scikit-learn
+        python-numpy python-pandas
+        python-scipy python-matplotlib
 
         # Multimedia & Bluetooth
         gstreamer-vaapi ffmpeg bluez bluez-utils
