@@ -160,7 +160,7 @@ MIRROR
 
         # Essential System Utilities
         networkmanager grub efibootmgr
-        btrfs-progs bash-completion
+        btrfs-progs bash-completion noto-fonts
         snapper neovim fastfetch nodejs npm
         reflector git xclip laptop-detect
         flatpak xorg htop firewalld
