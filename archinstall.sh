@@ -166,7 +166,7 @@ MIRROR
         flatpak xorg htop firewalld
         ninja gcc gdb cmake clang
         zram-generator cups rsync glances
-        irqbalance tlp tlp-rdw
+        irqbalance tlp tlp-rdw timeshift
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -284,6 +284,26 @@ ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="
 # NVMe SSD
 ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
 IOSHED
+ 
+    tee > "/usr/lib/udev/rules.d/69-hdparm.rules" <<'HDPARM'
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", RUN+="/usr/bin/hdparm -B 254 -S 0 /dev/%k"
+HDPARM
+
+    tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
+vm.swappiness = 100
+vm.vfs_cache_pressure=50
+vm.dirty_bytes = 268435456
+vm.page-cluster = 0
+vm.dirty_background_bytes = 134217728
+vm.dirty_writeback_centisecs = 1500
+kernel.nmi_watchdog = 0
+kernel.unprivileged_userns_clone = 1
+kernel.printk = 3 3 3 3
+kernel.kptr_restrict = 2
+kernel.kexec_load_disabled = 1
+fs.file-max = 2097152
+fs.xfs.xfssyncd_centisecs = 10000
+KSHED
 EOF
 }
 
