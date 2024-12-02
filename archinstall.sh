@@ -164,7 +164,7 @@ MIRROR
         snapper neovim fastfetch nodejs npm
         reflector git xclip laptop-detect
         flatpak xorg htop firewalld
-        ninja gcc gdb cmake clang
+        ninja gcc gdb cmake clang earlyoom
         zram-generator cups rsync glances
         irqbalance tlp tlp-rdw timeshift
         python python-pip python-scikit-learn
@@ -290,7 +290,7 @@ ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", RUN+="/usr
 HDPARM
 
     tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
-vm.swappiness = 100
+vm.swappiness = 10
 vm.vfs_cache_pressure=50
 vm.dirty_bytes = 268435456
 vm.page-cluster = 0
@@ -311,8 +311,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-terminal \
-    gnome-boxes
+    gnome gnome-terminal gnome-boxes
 
     # Remove gnome bloat's
     pacman -Rns --noconfirm \
@@ -322,6 +321,15 @@ desktop_install() {
     epiphany yelp malcontent \
     gnome-software gnome-music \
     gnome-characters
+
+    # Reduce desktop effects
+    gsettings set org.gnome.desktop.interface toolkit-accessibility false
+
+    # Limit background processes
+    gsettings set org.gnome.desktop.background show-desktop-icons false
+
+    # Minimize resource usage
+    gsettings set org.gnome.shell disable-user-extensions true
 
     rm -rf /usr/share/gnome-shell/extensions/*
 
@@ -342,6 +350,7 @@ configure_services() {
     systemctl enable irqbalance
     systemctl enable tlp.service
     systemctl enable firewalld
+    systemctl enable earlyoom
 EOF
 }
 
@@ -388,7 +397,7 @@ fi
     yay -S --needed --noconfirm \
         telegram-desktop-bin \
         vesktop-bin ferdium-bin \
-        zoom linutil-bin \
+        zoom linutil-bin btrfs-desktop-notification \
         wine preload youtube-music-bin \
         visual-studio-code-bin sdkmanager \
         android-sdk android-sdk-build-tools \
