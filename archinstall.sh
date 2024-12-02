@@ -180,7 +180,7 @@ MIRROR
         pipewire-pulse wireplumber
 
         # Daily Usage Needs
-        firefox zed micro kdeconnect rhythmbox
+        firefox zed micro kdeconnect rhythmbox libreoffice-fresh
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
