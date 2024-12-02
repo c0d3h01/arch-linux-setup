@@ -352,7 +352,7 @@ archinstall() {
 usrsetup() {
 
 # Check if yay is already installed
-if [[ command -v yay &> /dev/null ]]; then
+if command -v yay &> /dev/null; then
     echo "yay is already installed. Skipping installation."
 else
     # Clone yay-bin from AUR
