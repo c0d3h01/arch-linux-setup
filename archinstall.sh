@@ -42,7 +42,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_US.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="defaults,noatime,compress=zstd:1,commit=128,discard=async"
+        [BTRFS_OPTS]="compress=zstd:1"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
