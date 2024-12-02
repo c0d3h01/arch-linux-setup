@@ -163,24 +163,15 @@ MIRROR
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion
-        snapper vim fastfetch nodejs npm
-        reflector sudo git nano xclip
-        laptop-detect noto-fonts
+        snapper neovim fastfetch nodejs npm
+        reflector git xclip laptop-detect noto-fonts
         flatpak xorg htop firewalld
         ninja gcc gdb cmake clang
-        zram-generator ananicy-cpp
-        alacritty cups rsync glances
+        zram-generator cups rsync glances
         irqbalance tlp tlp-rdw
 
-        # Dev tools
-        rocm-hip-sdk rocm-opencl-sdk
-        python python-pip python-scikit-learn
-        python-numpy python-pandas
-        python-scipy python-matplotlib
-
         # Multimedia & Bluetooth
-        gstreamer-vaapi ffmpeg
-        bluez bluez-utils
+        gstreamer-vaapi ffmpeg bluez bluez-utils
         pipewire pipewire-alsa pipewire-jack
         pipewire-pulse wireplumber
 
@@ -330,7 +321,6 @@ configure_services() {
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
-    systemctl enable ananicy-cpp.service
     systemctl enable cups
     systemctl enable irqbalance
     systemctl enable tlp.service
@@ -356,37 +346,65 @@ archinstall() {
 
 # User environment setup function
 usrsetup() {
-    # Yay installation AUR pkg manager
+
+# Check if yay is already installed
+if [[ command -v yay &> /dev/null ]]; then
+    echo "yay is already installed. Skipping installation."
+else
+    # Clone yay-bin from AUR
     git clone https://aur.archlinux.org/yay-bin.git
+    
+    # Change to the yay-bin directory
     cd yay-bin
+    
+    # Build and install yay
     makepkg -si
+    
+    # Return to the previous directory
+    cd ..
+    
+    # Optional: Remove the cloned directory after installation
+    rm -rf yay-bin
+fi
 
     # Install user applications via yay
     yay -S --needed --noconfirm \
         telegram-desktop-bin \
-        onlyoffice-bin \
-        tor-browser-bin \
         vesktop-bin ferdium-bin \
-        github-desktop-bin \
         zoom linutil-bin \
-        docker-desktop \
-        ananicy-rules-git wine preload \
-        visual-studio-code-bin \
-        android-ndk \
-        android-sdk \
-        android-studio \
-        postman-bin \
-        flutter-bin \
-        youtube-music-bin \
-        notion-app-electron
+        wine preload youtube-music-bin \
+        visual-studio-code-bin sdkmanager \
+        android-sdk android-sdk-build-tools \
+        android-sdk-cmdline-tools-latest \
+        android-platform android-sdk-platform-tools \
+        android-studio notion-app-electron \
+        postman-bin flutter-bin
 
     # Enable services
     sudo systemctl enable --now preload
 
     # Set up variables
-    sed -i '$a\export PATH="/opt/android-ndk:$PATH"' "/home/c0d3h01/.bashrc"
-    sed -i '$a\export PATH="/opt/android-sdk:$PATH"' "/home/c0d3h01/.bashrc"
-    sed -i '$a\export PATH="/opt/flutter:$PATH"' "/home/c0d3h01/.bashrc"
+if [[ "$SHELL" == */bash ]]; then
+    # Bash configuration
+    sed -i '/^#/! {/export PATH/d; /export CHROME_EXECUTABLE/d}; $ a\
+export CHROME_EXECUTABLE=$(which firefox)\
+export PATH=$PATH:/opt/platform-tools\
+export PATH=$PATH:/opt/android-ndk\
+fastfetch' ~/.bashrc
+echo "Configuration updated for $(basename "$SHELL") shell."
+
+elif [[ "$SHELL" == */fish ]]; then
+    # Fish shell configuration
+    sed -i '/^#/! {/export CHROME_EXECUTABLE/d; /set -gx PATH/d}; $ a\
+set -gx CHROME_EXECUTABLE (which firefox)\
+set -gx PATH $PATH /opt/platform-tools /opt/android-ndk\
+fastfetch' ~/.config/fish/config.fish
+    echo "Configuration updated for $(basename "$SHELL") shell."
+else
+    echo "Unsupported shell. This script works with Bash and Fish only."
+fi
+
+    sudo chown -R c0d3h01:c0d3h01 android-sdk
 }
 
 # Main execution function
