@@ -164,12 +164,11 @@ MIRROR
         networkmanager grub efibootmgr
         btrfs-progs bash-completion
         snapper neovim fastfetch nodejs npm
-        reflector git xclip laptop-detect noto-fonts
+        reflector git xclip laptop-detect
         flatpak xorg htop firewalld
         ninja gcc gdb cmake clang
         zram-generator cups rsync glances
         irqbalance tlp tlp-rdw
-        rocm-hip-sdk rocm-opencl-sdk
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -229,8 +228,7 @@ HOST
     sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
     # Configure bootloader
-    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="nowatchdog zswap.enabled=0 zram.enabled=1 splash loglevel=3"|' /etc/default/grub
-    sed -i 's|GRUB_TIMEOUT=.*|GRUB_TIMEOUT=2|' /etc/default/grub
+    sed -i 's|GRUB_CMDLINE_LINUX_DEFAULT=".*"|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 nowatchdog irqpoll amd_pstate=guided processor.max_cstate=1 mitigations=auto"|' /etc/default/grub
 
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
     grub-mkconfig -o /boot/grub/grub.cfg
