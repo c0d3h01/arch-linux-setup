@@ -40,9 +40,9 @@ init_config() {
         [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
-        [LOCALE]="en_US.UTF-8"
+        [LOCALE]="en_IN.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="compress=zstd:1"
+        [BTRFS_OPTS]="compress=zstd:1,discard=async,ssd,noatime"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -114,10 +114,10 @@ setup_filesystems() {
     mkdir -p /mnt/{home,var/log,.snapshots,boot/efi,tmp}
 
     # Mount other subvolumes
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@.snapshots" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
+    mount -o "subvol=@home,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "subvol=@log,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "subvol=@.snapshots,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
+    mount -o "subvol=@tmp,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/tmp
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
