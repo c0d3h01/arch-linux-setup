@@ -266,17 +266,10 @@ fs-type = swap
 ZRAMCONF
 
     tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
-vm.swappiness = 60
-vm.vfs_cache_pressure=100
-vm.dirty_bytes = 0
-vm.page-cluster = 3
-vm.dirty_background_bytes = 0
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
 vm.dirty_writeback_centisecs = 500
-kernel.nmi_watchdog = 1
-kernel.printk = 3	4	1	7
-kernel.kptr_restrict = 0
-kernel.kexec_load_disabled = 0
-fs.file-max = 9223372036854775807
+fs.file-max = 2097152
 KSHED
 EOF
 }
