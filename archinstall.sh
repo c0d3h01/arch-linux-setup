@@ -166,7 +166,7 @@ MIRROR
         reflector git xclip laptop-detect
         flatpak xorg htop firewalld ananicy-cpp
         ninja gcc gdb cmake clang earlyoom
-        zram-generator cups rsync glances
+        zram-generator rsync glances
         irqbalance timeshift
         tlp tlp-rdw ethtool smartmontools
         python python-pip python-scikit-learn
@@ -285,7 +285,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-terminal gnome-boxes
+    gnome gnome-terminal
 
     # Remove gnome bloat's
     pacman -Rns --noconfirm \
@@ -295,7 +295,6 @@ desktop_install() {
     epiphany yelp malcontent \
     gnome-software gnome-music \
     gnome-characters
-    
     rm -rf /usr/share/gnome-shell/extensions/*
 
     systemctl enable gdm
@@ -311,7 +310,6 @@ configure_services() {
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
-    systemctl enable cups
     systemctl enable irqbalance
     systemctl enable firewalld
     systemctl enable earlyoom
@@ -364,14 +362,10 @@ fi
     # Install user applications via yay
     yay -S --needed --noconfirm \
         telegram-desktop-bin flutter-bin \
-        vesktop-bin ferdium-bin postman-bin \
-        zoom linutil-bin btrfs-desktop-notification \
-        wine preload youtube-music-bin ventoy-bin \
-        visual-studio-code-bin sdkmanager \
-        android-sdk android-sdk-build-tools \
-        android-sdk-cmdline-tools-latest \
-        android-platform android-sdk-platform-tools \
-        android-studio notion-app-electron \ 
+        vesktop-bin ferdium-bin ventoy-bin \
+        zoom linutil-bin android-studio \
+        wine preload youtube-music-bin  \
+        visual-studio-code-bin 
 
     # Enable services
     sudo systemctl enable --now preload
