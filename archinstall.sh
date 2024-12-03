@@ -168,6 +168,7 @@ MIRROR
         ninja gcc gdb cmake clang earlyoom
         zram-generator cups rsync glances
         irqbalance timeshift
+        tlp tlp-rdw ethtool smartmontools
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -315,6 +316,9 @@ configure_services() {
     systemctl enable firewalld
     systemctl enable earlyoom
     systemctl enable ananicy-cpp
+    systemctl enable tlp.service
+    systemctl enable NetworkManager-dispatcher.service
+    systemctl mask systemd-rfkill.service systemd-rfkill.socket
 EOF
 }
 
