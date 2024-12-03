@@ -147,7 +147,8 @@ MIRROR
     local base_packages=(
         # Core System
         base base-devel
-        linux-lts linux-lts-headers
+        linux linux-headers
+        linux-zen linux-zen-headers
         linux-firmware sof-firmware
 
         # CPU & GPU Drivers
@@ -163,7 +164,7 @@ MIRROR
         btrfs-progs bash-completion noto-fonts
         snapper neovim fastfetch nodejs npm
         reflector git xclip laptop-detect
-        flatpak xorg htop firewalld
+        flatpak xorg htop firewalld ananicy-cpp
         ninja gcc gdb cmake clang earlyoom
         zram-generator cups rsync glances
         irqbalance tlp tlp-rdw timeshift
@@ -351,6 +352,7 @@ configure_services() {
     systemctl enable tlp.service
     systemctl enable firewalld
     systemctl enable earlyoom
+    systemctl enable ananicy-cpp
 EOF
 }
 
@@ -395,22 +397,20 @@ fi
 
     # Install user applications via yay
     yay -S --needed --noconfirm \
-        telegram-desktop-bin \
-        vesktop-bin ferdium-bin \
+        telegram-desktop-bin flutter-bin \
+        vesktop-bin ferdium-bin postman-bin \
         zoom linutil-bin btrfs-desktop-notification \
         wine preload youtube-music-bin \
         visual-studio-code-bin sdkmanager \
         android-sdk android-sdk-build-tools \
         android-sdk-cmdline-tools-latest \
         android-platform android-sdk-platform-tools \
-        android-studio notion-app-electron \
-        postman-bin flutter-bin
+        android-studio notion-app-electron
 
     # Enable services
     sudo systemctl enable --now preload
 
     # Set up variables
-if [[ "$SHELL" == */bash ]]; then
     # Bash configuration
     sed -i '/^#/! {/export PATH/d; /export CHROME_EXECUTABLE/d}; $ a\
 export CHROME_EXECUTABLE=$(which firefox)\
@@ -418,17 +418,6 @@ export PATH=$PATH:/opt/platform-tools\
 export PATH=$PATH:/opt/android-ndk\
 fastfetch' ~/.bashrc
 echo "Configuration updated for $(basename "$SHELL") shell."
-
-elif [[ "$SHELL" == */fish ]]; then
-    # Fish shell configuration
-    sed -i '/^#/! {/export CHROME_EXECUTABLE/d; /set -gx PATH/d}; $ a\
-set -gx CHROME_EXECUTABLE (which firefox)\
-set -gx PATH $PATH /opt/platform-tools /opt/android-ndk\
-fastfetch' ~/.config/fish/config.fish
-    echo "Configuration updated for $(basename "$SHELL") shell."
-else
-    echo "Unsupported shell. This script works with Bash and Fish only."
-fi
 
     sudo chown -R harshal:harshal android-sdk
 }
