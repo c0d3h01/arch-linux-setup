@@ -400,12 +400,12 @@ fi
         telegram-desktop-bin flutter-bin \
         vesktop-bin ferdium-bin postman-bin \
         zoom linutil-bin btrfs-desktop-notification \
-        wine preload youtube-music-bin \
+        wine preload youtube-music-bin ventoy-bin \
         visual-studio-code-bin sdkmanager \
         android-sdk android-sdk-build-tools \
         android-sdk-cmdline-tools-latest \
         android-platform android-sdk-platform-tools \
-        android-studio notion-app-electron
+        android-studio notion-app-electron \ 
 
     # Enable services
     sudo systemctl enable --now preload
