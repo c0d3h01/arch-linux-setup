@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2162
-# shellcheck disable=SC2129
-# shellcheck disable=SC2024
-# shellcheck disable=SC2016
-set -euxo pipefail
-#exec > >(tee -i /mnt/var/log/arch_install.log) 2>&1
-
 # ==============================================================================
-# Arch Linux Installation Script
+# Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
 
 # Color codes
@@ -42,7 +35,7 @@ init_config() {
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
         [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="compress=zstd:1,discard=async,ssd,noatime"
+        [BTRFS_OPTS]="compress=zstd:1"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -147,39 +140,33 @@ MIRROR
     local base_packages=(
         # Core System
         base base-devel
-        linux linux-headers
-        linux-zen linux-zen-headers
         linux-firmware sof-firmware
+        linux linux-headers
+        linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
-        amd-ucode xf86-video-amdgpu
-        xf86-input-libinput gvfs
-        mesa-vdpau mesa lib32-mesa
-        lib32-glibc vulkan-radeon lib32-vulkan-radeon
-        vulkan-tools vulkan-icd-loader
-        libva-utils libva-mesa-driver
+        amd-ucode gvfs mesa-vdpau
+        libva-mesa-driver libva-utils mesa lib32-mesa
+        vulkan-radeon lib32-vulkan-radeon
+        xf86-video-amdgpu xf86-video-ati xf86-input-libinput
+        xorg-server xorg-xinit
 
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion noto-fonts
         htop neovim fastfetch nodejs npm
-        reflector git xclip laptop-detect
-        flatpak xorg htop firewalld ananicy-cpp
-        ninja gcc gdb cmake clang earlyoom
-        zram-generator rsync glances
-        irqbalance timeshift
-        tlp tlp-rdw ethtool smartmontools
+        git xclip laptop-detect
+        flatpak  htop glances firewalld timeshift
+        ninja gcc gdb cmake clang zram-generator rsync
+
+        # Multimedia & Bluetooth
+        bluez bluez-utils
+        
+        # Daily Usage Needs
+        firefox zed kdeconnect rhythmbox libreoffice-fresh
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
-
-        # Multimedia & Bluetooth
-        gstreamer-vaapi ffmpeg bluez bluez-utils
-        pipewire pipewire-alsa pipewire-jack
-        pipewire-pulse wireplumber
-
-        # Daily Usage Needs
-        firefox zed micro kdeconnect rhythmbox libreoffice-fresh
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -271,6 +258,30 @@ vm.vfs_cache_pressure = 50
 vm.dirty_writeback_centisecs = 500
 fs.file-max = 2097152
 KSHED
+
+# Snapper configuration
+# Create Snapper configuration for root
+snapper -c root create-config /
+
+# Configure snapshot settings
+sed -i 's/TIMELINE_CREATE="no"/TIMELINE_CREATE="yes"/' /etc/snapper/configs/root
+sed -i 's/TIMELINE_CLEANUP="no"/TIMELINE_CLEANUP="yes"/' /etc/snapper/configs/root
+sed -i 's/NUMBER_LIMIT="50"/NUMBER_LIMIT="5"/' /etc/snapper/configs/root
+
+# Create systemd service for boot snapshots
+cat > /etc/systemd/system/snapper-boot.service << SNAPPER
+[Unit]
+Description=Create Snapper snapshot on boot
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/snapper -c root create --description "Boot Snapshot"
+ExecStart=/usr/bin/snapper -c root delete-algorithm number 5
+
+[Install]
+WantedBy=multi-user.target
+SNAPPER
 EOF
 }
 
@@ -278,17 +289,7 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-terminal
-
-    # Remove gnome bloat's
-    pacman -Rns --noconfirm \
-    gnome-calendar gnome-text-editor \
-    gnome-tour gnome-user-docs \
-    gnome-weather gnome-music \
-    epiphany yelp malcontent \
-    gnome-software gnome-music \
-    gnome-characters
-    rm -rf /usr/share/gnome-shell/extensions/*
+    gnome gnome-terminal gnome-tweaks
 
     systemctl enable gdm
 EOF
@@ -303,13 +304,8 @@ configure_services() {
     systemctl enable bluetooth.service
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
-    systemctl enable irqbalance
     systemctl enable firewalld
-    systemctl enable earlyoom
-    systemctl enable ananicy-cpp
-    systemctl enable tlp.service
-    systemctl enable NetworkManager-dispatcher.service
-    systemctl mask systemd-rfkill.service systemd-rfkill.socket
+    systemctl enable snapper-boot.service
 EOF
 }
 
@@ -338,39 +334,30 @@ if command -v yay &> /dev/null; then
 else
     # Clone yay-bin from AUR
     git clone https://aur.archlinux.org/yay-bin.git
-    
-    # Change to the yay-bin directory
     cd yay-bin
-    
-    # Build and install yay
     makepkg -si
-    
-    # Return to the previous directory
     cd ..
-    
-    # Optional: Remove the cloned directory after installation
     rm -rf yay-bin
 fi
 
     # Install user applications via yay
     yay -S --needed --noconfirm \
         telegram-desktop-bin flutter-bin \
-        vesktop-bin ferdium-bin ventoy-bin \
-        zoom linutil-bin android-studio \
-        wine preload youtube-music-bin  \
-        visual-studio-code-bin 
-
-    # Enable services
-    sudo systemctl enable --now preload
+        vesktop-bin ferdium-bin \
+        zoom visual-studio-code-bin \
+        wine youtube-music-bin
 
     # Set up variables
     # Bash configuration
     sed -i '/^#/! {/export PATH/d; /export CHROME_EXECUTABLE/d}; $ a\
+# Use bash-completion, if available\
+[[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] &&\
+    . /usr/share/bash-completion/bash_completion\
 export CHROME_EXECUTABLE=$(which firefox)\
 export PATH=$PATH:/opt/platform-tools\
 export PATH=$PATH:/opt/android-ndk\
 fastfetch' ~/.bashrc
-echo "Configuration updated for $(basename "$SHELL") shell."
+echo "Configuration updated for shell."
 
     sudo chown -R harshal:harshal android-sdk
 }
