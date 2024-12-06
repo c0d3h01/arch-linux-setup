@@ -29,8 +29,8 @@ init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="archlinux"
-        [USERNAME]="harshal"
+        [HOSTNAME]="world"
+        [USERNAME]="harsh"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
