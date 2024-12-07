@@ -128,12 +128,8 @@ install_base_system() {
     tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
 Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
 Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
-Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
 Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 MIRROR
@@ -239,13 +235,9 @@ apply_optimizations() {
     tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
 Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
 Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
-Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+]Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 MIRROR
 
