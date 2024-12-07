@@ -269,7 +269,7 @@ vm.dirty_writeback_centisecs = 500
 fs.file-max = 2097152
 KSHED
 
-    tee > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES
+    tee > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
 # Prefer to recompress only huge pages. This will result in additional memory
 # savings, but may slightly increase CPU load due to additional compression
 # overhead.
