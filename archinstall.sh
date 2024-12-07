@@ -118,9 +118,6 @@ setup_filesystems() {
 install_base_system() {
     info "Installing base system..."
 
-    # Update Pacman Mirrorlist
-    reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
-
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -157,6 +154,9 @@ install_base_system() {
         
         # Daily Usage Needs
         zed kdeconnect rhythmbox libreoffice-fresh
+        python python-pip python-scikit-learn
+        python-numpy python-pandas
+        python-scipy python-matplotlib
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -214,9 +214,6 @@ EOF
 apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
-
-    # Update Pacman Mirrorlist
-    reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
 
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
