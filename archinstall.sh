@@ -124,8 +124,21 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
-    
+    rm -rf "/etc/pacman.d/mirrorlist"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+MIRROR
+
+
     # Refresh package databases
     pacman -Syy
 
@@ -222,8 +235,21 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
-    
+    rm -rf "/etc/pacman.d/mirrorlist"
+    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
+Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
+Server = http://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = https://mirrors.piconets.webwerks.in/archlinux-mirror/$repo/os/$arch
+Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
+Server = http://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = https://mirrors.saswata.cc/archlinux/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+MIRROR
+
+
     # Refresh package databases
     pacman -Syy --noconfirm
 
