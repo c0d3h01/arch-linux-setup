@@ -137,7 +137,7 @@ install_base_system() {
         # CPU & GPU Drivers
         amd-ucode gvfs mesa-vdpau
         libva-mesa-driver libva-utils mesa lib32-mesa
-        vulkan-radeon lib32-vulkan-radeon
+        vulkan-radeon lib32-vulkan-radeon vulkan-headers
         xf86-video-amdgpu xf86-video-ati xf86-input-libinput
         xorg-server xorg-xinit
 
