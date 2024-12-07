@@ -2,7 +2,7 @@
 # ==============================================================================
 # Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
-
+set -euxo pipefail
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -118,6 +118,9 @@ setup_filesystems() {
 install_base_system() {
     info "Installing base system..."
 
+    # Update Pacman Mirrorlist
+    reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
+
     # Pacman configure for arch-iso
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
@@ -154,9 +157,6 @@ install_base_system() {
         
         # Daily Usage Needs
         zed kdeconnect rhythmbox libreoffice-fresh
-        python python-pip python-scikit-learn
-        python-numpy python-pandas
-        python-scipy python-matplotlib
     )
     pacstrap -K /mnt --needed "${base_packages[@]}"
 }
@@ -215,13 +215,26 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
 
+    # Update Pacman Mirrorlist
+    reflector --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
+
     sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
+# Add Chaotic AUR Repository for easier access to AUR packages
+pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+pacman-key --lsign-key 3056513887B78AEB
+pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+
+    cat >> /etc/pacman.conf << PACMANCONF
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+PACMANCONF
+
     # Refresh package databases
-    pacman -Syy
+    pacman -Syu --noconfirm
 
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
@@ -239,6 +252,34 @@ vm.dirty_writeback_centisecs = 500
 fs.file-max = 2097152
 KSHED
 
+    tee > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES
+# Prefer to recompress only huge pages. This will result in additional memory
+# savings, but may slightly increase CPU load due to additional compression
+# overhead.
+ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
+  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
+
+TEST!="/dev/zram0", GOTO="zram_end"
+
+# Since ZRAM stores all pages in compressed form in RAM, we should prefer
+# preempting anonymous pages more than a page (file) cache.  Preempting file
+# pages may not be desirable because a process may want to access a file at any
+# time, whereas if it is preempted, it will cause an additional read cycle from
+# the disk.
+SYSCTL{vm.swappiness}="150"
+
+LABEL="zram_end"
+ZRULES
+
+    tee > "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IOSHED'
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+IOSHED
+
 EOF
 }
 
@@ -246,10 +287,19 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gvfs pavucontrol xarchiver xfce4 xfce4-goodies network-manager-applet \
-    lightdm lightdm-gtk-greeter
-
-    systemctl enable lightdm
+    gnome-shell \
+    gnome-control-center \
+    gnome-terminal \
+    gnome-tweaks \
+    gdm \
+    pop-gtk-theme \
+    pop-icon-theme \
+    pop-shell \
+    cosmic-desktop \
+    cosmic-icons \
+    cosmic-gtk-theme
+        
+    systemctl enable gdm
 EOF
 }
 
@@ -298,7 +348,7 @@ else
 fi
 
     # Install user applications via yay
-    yay -S --needed --noconfirm \
+    sudo pacman -S --needed --noconfirm \
         telegram-desktop-bin flutter-bin \
         vesktop-bin ferdium-bin brave-bin \
         zoom visual-studio-code-bin \
