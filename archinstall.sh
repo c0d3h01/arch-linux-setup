@@ -246,9 +246,10 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome gnome-terminal gnome-tweaks
+    gvfs pavucontrol xarchiver xfce4 xfce4-goodies network-manager-applet \
+    lightdm lightdm-gtk-greeter
 
-    systemctl enable gdm
+    systemctl enable lightdm
 EOF
 }
 
@@ -311,6 +312,7 @@ alias i="sudo pacman -S"\
 alias o="sudo pacman -Rns"\
 alias update="sudo pacman -Syyu --needed --noconfirm && yay --noconfirm"\
 alias clean="yay -Scc --noconfirm"\
+alias la="ls -la"\
 \
 # Use bash-completion, if available\
 [[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] &&\
