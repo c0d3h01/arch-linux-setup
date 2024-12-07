@@ -125,7 +125,7 @@ install_base_system() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
-
+    
     # Refresh package databases
     pacman -Syy
 
@@ -223,9 +223,9 @@ apply_optimizations() {
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
     reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
-
+    
     # Refresh package databases
-    pacman -Syu --noconfirm
+    pacman -Syy --noconfirm
 
     # ZRAM configuration
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
