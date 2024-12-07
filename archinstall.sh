@@ -124,15 +124,7 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
+    reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
 
     # Refresh package databases
     pacman -Syy
@@ -230,25 +222,7 @@ apply_optimizations() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
-
-# Add Chaotic AUR Repository for easier access to AUR packages
-pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
-pacman-key --lsign-key 3056513887B78AEB
-pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
-
-    cat >> /etc/pacman.conf << PACMANCONF
-[chaotic-aur]
-Include = /etc/pacman.d/chaotic-mirrorlist
-PACMANCONF
+    reflector --latest 20 --protocol https --sort age --save /etc/pacman.d/mirrorlist
 
     # Refresh package databases
     pacman -Syu --noconfirm
@@ -304,20 +278,9 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gnome-shell \
-    gnome-control-center \
-    gnome-terminal \
-    gnome-tweaks \
-    gdm \
-    pop-gtk-theme \
-    pop-icon-theme \
-    pop-shell \
-    cosmic-desktop \
-    cosmic-icons \
-    cosmic-gtk-theme \
-    cosmic-greeter
+    gnome gnome-terminal
 
-    systemctl enable cosmic-greeter.service
+    systemctl enable gdm
 EOF
 }
 
@@ -366,7 +329,7 @@ else
 fi
 
     # Install user applications via yay
-    sudo pacman -S --needed --noconfirm \
+    yay -S --needed --noconfirm \
         telegram-desktop-bin flutter-bin \
         vesktop-bin ferdium-bin brave-bin \
         zoom visual-studio-code-bin \
@@ -393,7 +356,7 @@ fastfetch' ~/.bashrc
 
 echo "Configuration updated for shell."
 
-    sudo chown -R harsh:harsh android-sdk
+    # sudo chown -R harsh:harsh android-sdk
 }
 
 # Main execution function
