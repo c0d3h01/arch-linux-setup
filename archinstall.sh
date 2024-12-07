@@ -119,20 +119,10 @@ install_base_system() {
     info "Installing base system..."
 
     # Pacman configure for arch-iso
-    sed -i 's/^#ParallelDownloads=5/ParallelDownloads=10/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
     
     # Refresh package databases
     pacman -Syy
@@ -163,7 +153,7 @@ MIRROR
         bluez bluez-utils
         
         # Daily Usage Needs
-        firefox zed kdeconnect rhythmbox libreoffice-fresh
+        zed kdeconnect rhythmbox libreoffice-fresh
         python python-pip python-scikit-learn
         python-numpy python-pandas
         python-scipy python-matplotlib
@@ -193,7 +183,7 @@ configure_system() {
     echo "KEYMAP=us" > "/etc/vconsole.conf"
 
     # Set hostname
-    hostnamectl hostname ${CONFIG[HOSTNAME]}
+    echo "${CONFIG[HOSTNAME]}" > /etc/hostname
 
     # Configure hosts
     tee > /etc/hosts <<'HOST'
@@ -225,20 +215,10 @@ apply_optimizations() {
     info "Applying system optimizations..."
     arch-chroot /mnt /bin/bash <<'EOF'
 
-    sed -i 's/^#ParallelDownloads=5/ParallelDownloads=10/' /etc/pacman.conf
+    sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
 
     # Refresh package databases
     pacman -Syy
@@ -259,29 +239,6 @@ vm.dirty_writeback_centisecs = 500
 fs.file-max = 2097152
 KSHED
 
-# Snapper configuration
-# Create Snapper configuration for root
-snapper -c root create-config /
-
-# Configure snapshot settings
-sed -i 's/TIMELINE_CREATE="no"/TIMELINE_CREATE="yes"/' /etc/snapper/configs/root
-sed -i 's/TIMELINE_CLEANUP="no"/TIMELINE_CLEANUP="yes"/' /etc/snapper/configs/root
-sed -i 's/NUMBER_LIMIT="50"/NUMBER_LIMIT="5"/' /etc/snapper/configs/root
-
-# Create systemd service for boot snapshots
-cat > /etc/systemd/system/snapper-boot.service << SNAPPER
-[Unit]
-Description=Create Snapper snapshot on boot
-After=local-fs.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/snapper -c root create --description "Boot Snapshot"
-ExecStart=/usr/bin/snapper -c root delete-algorithm number 5
-
-[Install]
-WantedBy=multi-user.target
-SNAPPER
 EOF
 }
 
@@ -305,7 +262,6 @@ configure_services() {
     systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable firewalld
-    systemctl enable snapper-boot.service
 EOF
 }
 
@@ -343,23 +299,31 @@ fi
     # Install user applications via yay
     yay -S --needed --noconfirm \
         telegram-desktop-bin flutter-bin \
-        vesktop-bin ferdium-bin \
+        vesktop-bin ferdium-bin brave-bin \
         zoom visual-studio-code-bin \
         wine youtube-music-bin
 
     # Set up variables
     # Bash configuration
-    sed -i '/^#/! {/export PATH/d; /export CHROME_EXECUTABLE/d}; $ a\
+sed -i '$a\
+\
+alias i="sudo pacman -S"\
+alias o="sudo pacman -Rns"\
+alias update="sudo pacman -Syyu --needed --noconfirm && yay --noconfirm"\
+alias clean="yay -Scc --noconfirm"\
+\
 # Use bash-completion, if available\
 [[ $PS1 && -f /usr/share/bash-completion/bash_completion ]] &&\
     . /usr/share/bash-completion/bash_completion\
-export CHROME_EXECUTABLE=$(which firefox)\
-export PATH=$PATH:/opt/platform-tools\
-export PATH=$PATH:/opt/android-ndk\
+\
+export CHROME_EXECUTABLE=$(which brave)\
+export PATH=$PATH:/opt/platform-tools:/opt/android-ndk\
+\
 fastfetch' ~/.bashrc
+
 echo "Configuration updated for shell."
 
-    sudo chown -R harshal:harshal android-sdk
+    sudo chown -R harsh:harsh android-sdk
 }
 
 # Main execution function
