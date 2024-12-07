@@ -297,9 +297,10 @@ desktop_install() {
     pop-shell \
     cosmic-desktop \
     cosmic-icons \
-    cosmic-gtk-theme
-        
-    systemctl enable gdm
+    cosmic-gtk-theme \
+    cosmic-greeter
+
+    systemctl enable cosmic-greeter.service
 EOF
 }
 
