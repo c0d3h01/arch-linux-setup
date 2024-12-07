@@ -150,7 +150,7 @@ MIRROR
         linux-lts linux-lts-headers
 
         # CPU & GPU Drivers
-        amd-ucode gvfs mesa-vdpau
+        amd-ucode mesa-vdpau
         libva-mesa-driver libva-utils mesa lib32-mesa
         vulkan-radeon lib32-vulkan-radeon vulkan-headers
         xf86-video-amdgpu xf86-video-ati xf86-input-libinput
@@ -355,7 +355,7 @@ else
 fi
 
     # Install user applications via yay
-    yay -S --needed --noconfirm \
+    yay -S --noconfirm \
         telegram-desktop-bin flutter-bin \
         vesktop-bin ferdium-bin brave-bin \
         zoom visual-studio-code-bin \
