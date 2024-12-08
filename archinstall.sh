@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
+#
+# shellcheck disable=SC1078
+# shellcheck disable=SC1079
+# shellcheck disable=SC1009
+# shellcehck disable=SC1072
+# shellcheck disable=SC1073
 # ==============================================================================
 # Automated Arch Linux Installation Personal Setup Script
 # ==============================================================================
+
 set -euxo pipefail
+
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,8 +42,6 @@ init_config() {
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
-        [CPU_VENDOR]="amd"
-        [BTRFS_OPTS]="compress=zstd:1"
     )
 
     CONFIG[EFI_PART]="${CONFIG[DRIVE]}p1"
@@ -53,65 +59,49 @@ success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
 setup_disk() {
-    info "Preparing disk partitions..."
-
-    # Safety check
-    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N)" -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
-
-    # Partition the disk
-    sgdisk --zap-all "${CONFIG[DRIVE]}"
-    sgdisk --clear "${CONFIG[DRIVE]}"
-    sgdisk --set-alignment=8 "${CONFIG[DRIVE]}"
-
-    # Create partitions
-    sgdisk --new=1:0:+1G \
-        --typecode=1:ef00 \
-        --change-name=1:"EFI" \
-        --new=2:0:0 \
-        --typecode=2:8300 \
-        --change-name=2:"ROOT" \
-        --attributes=2:set:2 \
-        "${CONFIG[DRIVE]}"
-
-    # Verify and update partition table
-    sgdisk --verify "${CONFIG[DRIVE]}" || error "Partition verification failed"
-    partprobe "${CONFIG[DRIVE]}"
+    # Use parted for partitioning
+    parted -s "${CONFIG[DRIVE]}" mklabel gpt
+    
+    # EFI Partition
+    parted -s "${CONFIG[DRIVE]}" mkpart primary fat32 1MiB 512MiB
+    parted -s "${CONFIG[DRIVE]}" set 1 esp on
+    
+    # Root Partition 
+    parted -s "${CONFIG[DRIVE]}" mkpart primary btrfs 100%
 }
 
-# Filesystem setup function
 setup_filesystems() {
-    info "Setting up filesystems..."
-
     # Format partitions
-    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
-    mkfs.btrfs -f -L ROOT -n 32k -m dup "${CONFIG[ROOT_PART]}"
-
+    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]"
+    mkfs.btrfs -f -L ROOT "${CONFIG[ROOT_PART]"
+    
+    # Mount root partition
+    mount "${CONFIG[ROOT_PART]" /mnt
+    
     # Create BTRFS subvolumes
-    mount "${CONFIG[ROOT_PART]}" /mnt
-    pushd /mnt >/dev/null
-
-    local subvolumes=("@" "@home" "@cache" "@tmp" "@log" "@.snapshots")
-    for subvol in "${subvolumes[@]}"; do
-        btrfs subvolume create "$subvol"
-    done
-
-    popd >/dev/null
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@log
+    btrfs subvolume create /mnt/@cache
+    btrfs subvolume create /mnt/@.snapshots
+    
+    # Unmount and remount with subvolumes
     umount /mnt
-
-    # Mount subvolumes
-    mount -o "${CONFIG[BTRFS_OPTS]},subvol=@" "${CONFIG[ROOT_PART]}" /mnt
-
+    
+    # Mount root subvolume
+    mount -o defaults,compress=zstd:1,subvol=@ "${CONFIG[ROOT_PART]" /mnt
+    
     # Create mount points
-    mkdir -p /mnt/{home,var/log,.snapshots,boot/efi,tmp}
-
+    mkdir -p /mnt/{home,var/log,var/cache,boot/efi,.snapshots}
+    
     # Mount other subvolumes
-    mount -o "subvol=@home,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o "subvol=@log,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o "subvol=@.snapshots,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/.snapshots
-    mount -o "subvol=@tmp,${CONFIG[BTRFS_OPTS]}" "${CONFIG[ROOT_PART]}" /mnt/tmp
-    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+    mount -o defaults,compress=zstd:1,subvol=@home "${CONFIG[ROOT_PART]" /mnt/home
+    mount -o defaults,compress=zstd:1,subvol=@log "${CONFIG[ROOT_PART]" /mnt/var/log
+    mount -o defaults,compress=zstd:1,subvol=@cache "${CONFIG[ROOT_PART]" /mnt/var/cache
+    mount -o defaults,compress=zstd:1,subvol=@.snapshots "${CONFIG[ROOT_PART]" /mnt/.snapshots
+    
+    # Mount EFI partition
+    mount "${CONFIG[EFI_PART]" /mnt/boot/efi
 }
 
 # Base system installation function
@@ -156,7 +146,7 @@ MIRROR
         networkmanager grub efibootmgr
         btrfs-progs bash-completion noto-fonts
         htop vim fastfetch nodejs npm
-        git xclip laptop-detect
+        git xclip laptop-detect kitty
         flatpak  htop glances firewalld timeshift
         ninja gcc gdb cmake clang zram-generator rsync
 
@@ -238,7 +228,7 @@ Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
 Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
 Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
 Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-]Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
+Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
 MIRROR
 
@@ -250,7 +240,7 @@ MIRROR
     tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
 [zram0] 
 compression-algorithm = zstd
-zram-size = ram
+zram-size = ram * 2
 swap-priority = 100
 fs-type = swap
 ZRAMCONF
@@ -297,9 +287,16 @@ EOF
 desktop_install() {
     arch-chroot /mnt /bin/bash <<'EOF'
     pacman -S --needed --noconfirm \
-    gvfs pavucontrol xarchiver xfce4 xfce4-goodies network-manager-applet \
-    lightdm lightdm-gtk-greeter
-    systemctl enable lightdm
+    gnome gnome-tweaks gnome-terminal
+
+    # Remove gnome bloat's & enable gdm
+    pacman -Rns --noconfirm \
+    gnome-calendar gnome-text-editor \
+    gnome-tour gnome-user-docs \
+    gnome-weather gnome-music \
+    epiphany yelp malcontent \
+    gnome-software gnome-music
+    systemctl enable gdm
 EOF
 }
 
@@ -409,9 +406,9 @@ show_help() {
 Usage: $(basename "$0") [OPTION]
 
 Options:
-    -i, --install    Run Arch Linux installation
-    -s, --setup      Setup user configuration
-    -h, --help       Display this help message
+    -i, --install
+    -s, --setup
+    -h, --help
 EOF
 }
 
