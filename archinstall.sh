@@ -60,47 +60,49 @@ success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
 setup_disk() {
-    # Use parted for partitioning
+    # Create a GPT partition table on the drive
     parted -s "${CONFIG[DRIVE]}" mklabel gpt
-    
-    # EFI Partition
-    parted -s "${CONFIG[DRIVE]}" mkpart primary fat32 1MiB 512MiB
+
+    # Create EFI partition (1GB)
+    parted -s "${CONFIG[DRIVE]}" mkpart primary fat32 1MiB 1GiB
     parted -s "${CONFIG[DRIVE]}" set 1 esp on
-    
-    # Root Partition 
-    parted -s "${CONFIG[DRIVE]}" mkpart primary btrfs 100%
+
+    # Create main BTRFS partition using remaining space
+    parted -s "${CONFIG[DRIVE]}" mkpart primary btrfs 1GiB 100%
 }
 
 setup_filesystems() {
-    # Format partitions
+    # Format EFI partition
     mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
+
+    # Format main partition with BTRFS
     mkfs.btrfs -f -L ROOT "${CONFIG[ROOT_PART]}"
-    
-    # Mount root partition
+
+    # Mount the root partition
     mount "${CONFIG[ROOT_PART]}" /mnt
-    
-    # Create BTRFS subvolumes
+
+    # Create BTRFS subvolumes with exact names
     btrfs subvolume create /mnt/@
     btrfs subvolume create /mnt/@home
     btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@cache
+    btrfs subvolume create /mnt/@pkg
     btrfs subvolume create /mnt/@.snapshots
-    
-    # Unmount and remount with subvolumes
+
+    # Unmount and remount with specific subvolumes
     umount /mnt
-    
-    # Mount root subvolume
-    mount -o defaults,compress=zstd:1,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
-    
-    # Create mount points
-    mkdir -p /mnt/{home,var/log,var/cache,boot/efi,.snapshots}
-    
-    # Mount other subvolumes
-    mount -o defaults,compress=zstd:1,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o defaults,compress=zstd:1,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o defaults,compress=zstd:1,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
-    mount -o defaults,compress=zstd:1,subvol=@.snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
-    
+
+    # Mount root subvolume with specific options
+    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
+
+    # Create necessary directories
+    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
+
+    # Mount other subvolumes with matching options
+    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@pkg "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
+    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@.snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
+
     # Mount EFI partition
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
