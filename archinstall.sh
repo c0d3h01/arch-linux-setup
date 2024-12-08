@@ -155,13 +155,14 @@ MIRROR
         # Essential System Utilities
         networkmanager grub efibootmgr
         btrfs-progs bash-completion noto-fonts
-        htop neovim fastfetch nodejs npm
+        htop vim fastfetch nodejs npm
         git xclip laptop-detect
         flatpak  htop glances firewalld timeshift
         ninja gcc gdb cmake clang zram-generator rsync
 
         # Multimedia & Bluetooth
         bluez bluez-utils
+        pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber
         
         # Daily Usage Needs
         zed kdeconnect rhythmbox libreoffice-fresh
