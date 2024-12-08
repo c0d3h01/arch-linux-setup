@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # shellcheck disable=SC1078
+# shellcheck disable=SC2162
 # shellcheck disable=SC1079
 # shellcheck disable=SC1009
 # shellcehck disable=SC1072
@@ -72,11 +73,11 @@ setup_disk() {
 
 setup_filesystems() {
     # Format partitions
-    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]"
-    mkfs.btrfs -f -L ROOT "${CONFIG[ROOT_PART]"
+    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
+    mkfs.btrfs -f -L ROOT "${CONFIG[ROOT_PART]}"
     
     # Mount root partition
-    mount "${CONFIG[ROOT_PART]" /mnt
+    mount "${CONFIG[ROOT_PART]}" /mnt
     
     # Create BTRFS subvolumes
     btrfs subvolume create /mnt/@
@@ -89,19 +90,19 @@ setup_filesystems() {
     umount /mnt
     
     # Mount root subvolume
-    mount -o defaults,compress=zstd:1,subvol=@ "${CONFIG[ROOT_PART]" /mnt
+    mount -o defaults,compress=zstd:1,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
     
     # Create mount points
     mkdir -p /mnt/{home,var/log,var/cache,boot/efi,.snapshots}
     
     # Mount other subvolumes
-    mount -o defaults,compress=zstd:1,subvol=@home "${CONFIG[ROOT_PART]" /mnt/home
-    mount -o defaults,compress=zstd:1,subvol=@log "${CONFIG[ROOT_PART]" /mnt/var/log
-    mount -o defaults,compress=zstd:1,subvol=@cache "${CONFIG[ROOT_PART]" /mnt/var/cache
-    mount -o defaults,compress=zstd:1,subvol=@.snapshots "${CONFIG[ROOT_PART]" /mnt/.snapshots
+    mount -o defaults,compress=zstd:1,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o defaults,compress=zstd:1,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o defaults,compress=zstd:1,subvol=@cache "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o defaults,compress=zstd:1,subvol=@.snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
     
     # Mount EFI partition
-    mount "${CONFIG[EFI_PART]" /mnt/boot/efi
+    mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
 }
 
 # Base system installation function
