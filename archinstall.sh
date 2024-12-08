@@ -117,17 +117,6 @@ install_base_system() {
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
 
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
-
-
     # Refresh package databases
     pacman -Syy
 
@@ -224,17 +213,6 @@ apply_optimizations() {
     sed -i 's/^#Color/Color/' /etc/pacman.conf
     sed -i '/^# Misc options/a DisableDownloadTimeout\nILoveCandy' /etc/pacman.conf
     sed -i '/#\[multilib\]/,/#Include = \/etc\/pacman.d\/mirrorlist/ s/^#//' /etc/pacman.conf
-
-    rm -rf "/etc/pacman.d/mirrorlist"
-    tee > "/etc/pacman.d/mirrorlist" <<'MIRROR'
-Server = http://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = https://mirrors.nxtgen.com/archlinux-mirror/$repo/os/$arch
-Server = http://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = https://mirror.sahil.world/archlinux/$repo/os/$arch
-Server = http://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-Server = https://in-mirror.garudalinux.org/archlinux/$repo/os/$arch
-MIRROR
-
 
     # Refresh package databases
     pacman -Syy --noconfirm
