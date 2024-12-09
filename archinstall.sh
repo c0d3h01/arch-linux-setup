@@ -38,8 +38,8 @@ init_config() {
 
     CONFIG=(
         [DRIVE]="/dev/nvme0n1"
-        [HOSTNAME]="world"
-        [USERNAME]="harsh"
+        [HOSTNAME]="archlinux"
+        [USERNAME]="harshal"
         [PASSWORD]="$PASSWORD"
         [TIMEZONE]="Asia/Kolkata"
         [LOCALE]="en_IN.UTF-8"
@@ -60,51 +60,77 @@ success() { echo -e "${GREEN}SUCCESS:$* ${NC}"; }
 
 # Disk preparation function
 setup_disk() {
-    # Create a GPT partition table on the drive
-    parted -s "${CONFIG[DRIVE]}" mklabel gpt
+    info "Preparing disk for low-end laptop performance..."
+    
+    # Safety confirmation
+    read -p "WARNING: This will erase ${CONFIG[DRIVE]}. Continue? (y/N)" -n 1 -r
+    echo
+    [[ ! $REPLY =~ ^[Yy]$ ]] && error "Operation cancelled by user"
 
-    # Create EFI partition (1GB)
-    parted -s "${CONFIG[DRIVE]}" mkpart primary fat32 1MiB 1GiB
-    parted -s "${CONFIG[DRIVE]}" set 1 esp on
+    # Optimized disk preparation
+    sgdisk --zap-all "${CONFIG[DRIVE]}"
+    sgdisk --clear "${CONFIG[DRIVE]}"
+    
+    # Performance-focused alignment
+    sgdisk --set-alignment=4096 "${CONFIG[DRIVE]}"
 
-    # Create main BTRFS partition using remaining space
-    parted -s "${CONFIG[DRIVE]}" mkpart primary btrfs 1GiB 100%
+    # Minimalist, performance-optimized partitioning
+    sgdisk --new=1:0:+1G \
+        --typecode=1:ef00 \
+        --change-name=1:"EFI" \
+        --new=2:0:0 \
+        --typecode=2:8300 \
+        --change-name=2:"ROOT" \
+        --attributes=2:set:2 \
+        "${CONFIG[DRIVE]}"
+
+    # Verify and update partition table
+    sgdisk --verify "${CONFIG[DRIVE]}" || error "Partition verification failed"
+    partprobe "${CONFIG[DRIVE]}"
 }
 
 setup_filesystems() {
-    # Format EFI partition
-    mkfs.fat -F32 -n EFI "${CONFIG[EFI_PART]}"
+    info "Optimizing filesystems for low-end laptop..."
 
-    # Format main partition with BTRFS
-    mkfs.btrfs -f -L ROOT "${CONFIG[ROOT_PART]}"
+    # Format with performance-focused options
+    mkfs.fat -F32 "${CONFIG[EFI_PART]}"
+    mkfs.btrfs -f -L ROOT \
+        -n 32k \
+        -m dup \
+        -O discard \
+        "${CONFIG[ROOT_PART]}"
 
-    # Mount the root partition
+    # Mount and create subvolumes
     mount "${CONFIG[ROOT_PART]}" /mnt
 
-    # Create BTRFS subvolumes with exact names
-    btrfs subvolume create /mnt/@
-    btrfs subvolume create /mnt/@home
-    btrfs subvolume create /mnt/@log
-    btrfs subvolume create /mnt/@pkg
-    btrfs subvolume create /mnt/@.snapshots
-
-    # Unmount and remount with specific subvolumes
+    # Optimize subvolume layout
+    pushd /mnt >/dev/null
+    local subvolumes=("@" "@home" "@cache" "@tmp" "@log")
+    for subvol in "${subvolumes[@]}"; do
+        btrfs subvolume create "$subvol"
+    done
+    popd >/dev/null
     umount /mnt
 
-    # Mount root subvolume with specific options
-    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@ "${CONFIG[ROOT_PART]}" /mnt
+    # Mount with performance options
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@" "${CONFIG[ROOT_PART]}" /mnt
 
-    # Create necessary directories
-    mkdir -p /mnt/{home,var/log,var/cache/pacman/pkg,.snapshots,boot/efi}
+    # Create necessary mount points
+    mkdir -p /mnt/{home,var/{cache,log},tmp,boot/efi}
 
-    # Mount other subvolumes with matching options
-    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@home "${CONFIG[ROOT_PART]}" /mnt/home
-    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@log "${CONFIG[ROOT_PART]}" /mnt/var/log
-    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@pkg "${CONFIG[ROOT_PART]}" /mnt/var/cache/pacman/pkg
-    mount -o rw,relatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=@.snapshots "${CONFIG[ROOT_PART]}" /mnt/.snapshots
-
-    # Mount EFI partition
+    # Mount subvolumes with optimized options
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@home" "${CONFIG[ROOT_PART]}" /mnt/home
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@cache" "${CONFIG[ROOT_PART]}" /mnt/var/cache
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@log" "${CONFIG[ROOT_PART]}" /mnt/var/log
+    mount -o "noatime,compress=zstd:1,discard=async,ssd,space_cache=v2,subvol=@tmp" "${CONFIG[ROOT_PART]}" /mnt/tmp
     mount "${CONFIG[EFI_PART]}" /mnt/boot/efi
+
+    # Create swap file with SSD optimization
+    truncate -s 0 /mnt/swap/swapfile
+    chattr +C /mnt/swap/swapfile
+    fallocate -l 8G /mnt/swap/swapfile
+    chmod 600 /mnt/swap/swapfile
+    mkswap /mnt/swap/swapfile
 }
 
 # Base system installation function
@@ -125,7 +151,7 @@ install_base_system() {
         base base-devel
         linux-firmware sof-firmware
         linux linux-headers
-        linux-lts linux-lts-headers
+        linux-zen linux-zen-headers
 
         # CPU & GPU Drivers
         amd-ucode mesa-vdpau
@@ -140,7 +166,7 @@ install_base_system() {
         htop vim fastfetch nodejs npm
         git xclip laptop-detect kitty
         flatpak  htop glances firewalld timeshift
-        ninja gcc gdb cmake clang zram-generator rsync
+        ninja gcc gdb cmake clang rsync
 
         # Multimedia & Bluetooth
         bluez bluez-utils
@@ -217,49 +243,40 @@ apply_optimizations() {
     # Refresh package databases
     pacman -Syy --noconfirm
 
-    # ZRAM configuration
-    tee > "/etc/systemd/zram-generator.conf" <<'ZRAMCONF'
-[zram0] 
-compression-algorithm = zstd
-zram-size = ram * 2
-swap-priority = 100
-fs-type = swap
-ZRAMCONF
+    echo "/swap/swapfile none swap defaults,pri=100 0 0" >> /etc/fstab
 
-    tee > "/etc/sysctl.d/99-kernel-sched-rt.conf" <<'KSHED'
-vm.swappiness = 10
-vm.vfs_cache_pressure = 50
-vm.dirty_writeback_centisecs = 500
-fs.file-max = 2097152
-KSHED
+    # Create snapper configuration
+    snapper -c root create-config /
 
-    tee > "/usr/lib/udev/rules.d/30-zram.rules" <<'ZRULES'
-# Prefer to recompress only huge pages. This will result in additional memory
-# savings, but may slightly increase CPU load due to additional compression
-# overhead.
-ACTION=="add", KERNEL=="zram[0-9]*", ATTR{recomp_algorithm}="algo=lz4 priority=1", \
-  RUN+="/sbin/sh -c echo 'type=huge' > /sys/block/%k/recompress"
+    # Modify snapper configuration
+    cat << SNAPCONF >> /etc/snapper/configs/root
+# Custom snapshot configuration
+TIMELINE_CREATE="yes"
+TIMELINE_CLEANUP="yes"
+TIMELINE_MIN_AGE="1800"
+TIMELINE_LIMIT_HOURLY="5"
+TIMELINE_LIMIT_DAILY="7"
+TIMELINE_LIMIT_WEEKLY="4"
+TIMELINE_LIMIT_MONTHLY="12"
+SNAPCONF
 
-TEST!="/dev/zram0", GOTO="zram_end"
+# Configure btrbk for backups
+cat << SNAP > /etc/btrbk/btrbk.conf
+volume /
+  snapshot_preserve_min   2d
+  snapshot_preserve      14d 10w 6m
 
-# Since ZRAM stores all pages in compressed form in RAM, we should prefer
-# preempting anonymous pages more than a page (file) cache.  Preempting file
-# pages may not be desirable because a process may want to access a file at any
-# time, whereas if it is preempted, it will cause an additional read cycle from
-# the disk.
-SYSCTL{vm.swappiness}="150"
+  subvolume @
+    snapshot_name        @_${HOSTNAME}_snap
+  
+  subvolume @home
+    snapshot_name        @home_${HOSTNAME}_snap
+SNAP
 
-LABEL="zram_end"
-ZRULES
-
-    tee > "/usr/lib/udev/rules.d/60-ioschedulers.rules" <<'IOSHED'
-# HDD
-ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
-# SSD
-ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
-# NVMe SSD
-ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
-IOSHED
+# Enable and start services
+systemctl enable --now snapper-timeline.timer
+systemctl enable --now snapper-cleanup.timer
+systemctl enable --now btrbk.timer
 
 EOF
 }
@@ -276,7 +293,7 @@ desktop_install() {
     gnome-tour gnome-user-docs \
     gnome-weather gnome-music \
     epiphany yelp malcontent \
-    gnome-software gnome-music
+    gnome-software
     systemctl enable gdm
 EOF
 }
@@ -288,7 +305,6 @@ configure_services() {
     # Enable system services
     systemctl enable NetworkManager
     systemctl enable bluetooth.service
-    systemctl enable systemd-zram-setup@zram0.service
     systemctl enable fstrim.timer
     systemctl enable firewalld
 EOF
@@ -328,9 +344,9 @@ fi
     # Install user applications via yay
     yay -S --noconfirm \
         telegram-desktop-bin flutter-bin \
-        vesktop-bin ferdium-bin brave-bin \
+        vesktop-bin youtube-music-bin \
         zoom visual-studio-code-bin \
-        wine youtube-music-bin
+        wine 
 
     # Set up variables
     # Bash configuration
